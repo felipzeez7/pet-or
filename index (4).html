@@ -1,0 +1,1386 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Match Pet — Gestão Avançada e Adoção Dupla (Modo Teste)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        @keyframes popIn { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .animate-pop-in { animation: popIn 0.2s ease-out forwards; }
+        .swipe-card { touch-action: none; user-select: none; will-change: transform; transition: transform 0.2s ease, opacity 0.2s ease; }
+        .swipe-card.dragging { transition: none !important; }
+        .stamp-like { border: 4px solid #10b981; color: #10b981; transform: rotate(-15deg); }
+        .stamp-nope { border: 4px solid #ef4444; color: #ef4444; transform: rotate(15deg); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @media (max-width: 768px) {
+            .mobile-bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 40; padding-bottom: env(safe-area-inset-bottom); }
+            .main-content { padding-bottom: 80px; }
+            .desktop-nav { display: none; }
+        }
+        @media (min-width: 769px) {
+            .mobile-bottom-nav { display: none; }
+            .desktop-nav { display: flex; }
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col text-gray-800 antialiased selection:bg-rose-500 selection:text-white">
+
+    <!-- ================= 1. TELA DE LOGIN / CADASTRO ================= -->
+    <div id="view-auth" class="fixed inset-0 z-50 bg-white flex flex-col md:flex-row overflow-y-auto">
+        <div class="flex-1 bg-gray-50 flex flex-col items-center justify-center p-8 border-b md:border-b-0 md:border-r border-gray-200 min-h-[300px]">
+            <div class="w-16 h-16 bg-rose-500 text-white rounded-2xl flex items-center justify-center text-3xl mb-6 shadow-lg shadow-rose-200">
+                <i class="fa-solid fa-paw"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight text-center">Match Pet</h1>
+            <p class="text-gray-500 mt-2 text-center max-w-xs">A plataforma inteligente que conecta você ao seu novo melhor amigo.</p>
+        </div>
+
+        <div class="flex-1 bg-white flex flex-col justify-center p-6 md:p-12 w-full max-w-lg mx-auto">
+            <div class="flex bg-gray-100 p-1 rounded-xl mb-6">
+                <button id="tab-login" onclick="toggleAuth('login')" class="flex-1 py-2.5 text-sm font-bold bg-white text-gray-900 rounded-lg shadow-sm">Entrar</button>
+                <button id="tab-register" onclick="toggleAuth('register')" class="flex-1 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-900 rounded-lg transition-colors">Criar Conta</button>
+            </div>
+
+            <!-- Formulário de Login -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4 animate-pop-in">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">E-mail</label>
+                    <input type="email" id="login-email" required placeholder="seu@email.com" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Senha</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500">
+                </div>
+                <button type="submit" class="w-full py-3.5 mt-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-all shadow-md">Entrar na Plataforma</button>
+                <p class="text-center text-xs text-gray-400 mt-4">Protótipo: use qualquer dado para testar.</p>
+            </form>
+
+            <!-- Formulário de Cadastro — modo de teste sem exigência de CPF/CNPJ -->
+            <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">Modo de teste: CPF e CNPJ são opcionais. Não use dados reais desnecessariamente. Esta versão não realiza consulta cadastral à Receita Federal.</p>
+            <form id="form-register" onsubmit="handleRegister(event)" class="hidden space-y-4 animate-pop-in pb-10">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tipo de Perfil</label>
+                    <select id="reg-role" onchange="toggleRegFields()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-rose-500 text-gray-900 font-semibold">
+                        <option value="adotante">Pessoa Física - Quero Adotar</option>
+                        <option value="ong">Pessoa Jurídica - ONG / Abrigo</option>
+                        <option value="empresa">Pessoa Jurídica - Empresa Patrocinadora</option>
+                    </select>
+                </div>
+
+                <!-- Campos Pessoa Física (Adotante) -->
+                <div id="fields-pf" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nome Completo</label>
+                        <input type="text" id="reg-nome-pf" placeholder="Ex: Nome Completo" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">CPF (Opcional — modo teste)</label>
+                            <!-- Modo teste: CPF opcional; máscara preservada -->
+                            <input type="text" id="reg-cpf" oninput="maskCPF(this)" placeholder="Deixe em branco para testar" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Data de Nascimento</label>
+                            <input type="date" id="reg-nascimento" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Campos Pessoa Jurídica (ONG/Empresa) -->
+                <div id="fields-pj" class="hidden space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Razão Social / Nome da Entidade</label>
+                        <input type="text" id="reg-nome-pj" placeholder="Ex: Instituto Resgate Pet" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">CNPJ (Opcional — modo teste)</label>
+                        <!-- Modo teste: CNPJ opcional; máscara preservada -->
+                        <input type="text" id="reg-cnpj" oninput="maskCNPJ(this)" placeholder="Deixe em branco para testar" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+
+                <!-- Campos Comuns -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Cidade - UF</label>
+                        <input type="text" id="reg-city" required placeholder="Ex: Itapetininga - SP" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">E-mail</label>
+                        <input type="email" id="reg-email" required placeholder="seu@email.com" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Senha Segura</label>
+                    <input type="password" id="reg-senha" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-rose-500">
+                </div>
+
+                <div class="bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-2 mt-4">
+                    <i class="fa-solid fa-shield-halved text-blue-500 mt-0.5"></i>
+                    <p class="text-[10px] text-blue-700 leading-tight">Sistema integrado com validação de Cadastro Nacional. Exige-se maioridade penal (18 anos) para adoções.</p>
+                </div>
+
+                <button type="submit" class="w-full py-3.5 bg-gray-900 hover:bg-black text-white font-bold rounded-xl transition-all shadow-md">Criar Conta Validadada</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= 2. APP PRINCIPAL ================= -->
+    <div id="app-container" class="hidden h-full flex-col bg-gray-50">
+        
+        <header class="sticky top-0 z-30 bg-white border-b border-gray-200">
+            <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('feed')">
+                    <div class="w-9 h-9 bg-rose-500 text-white rounded-xl flex items-center justify-center text-lg"><i class="fa-solid fa-paw"></i></div>
+                    <div class="hidden sm:block">
+                        <h1 class="font-extrabold text-lg tracking-tight text-gray-900 leading-tight">Match Pet</h1>
+                        <span id="header-city-display" class="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">📍 Localizando...</span>
+                    </div>
+                </div>
+
+                <!-- Nav Adotante -->
+                <nav id="desktop-nav-adotante" class="desktop-nav hidden h-full flex-1 justify-center gap-8 px-8">
+                    <button onclick="switchTab('feed')" id="d-tab-feed" class="h-full flex items-center gap-2 border-b-2 border-rose-500 text-gray-900 font-semibold text-sm px-2">Descobrir</button>
+                    <button onclick="switchTab('filter')" id="d-tab-filter" class="h-full flex items-center gap-2 border-b-2 border-transparent text-gray-500 font-medium text-sm px-2">Filtros</button>
+                    <button onclick="switchTab('matches')" id="d-tab-matches" class="h-full flex items-center gap-2 border-b-2 border-transparent text-gray-500 font-medium text-sm px-2">Chat</button>
+                </nav>
+
+                <!-- Nav ONG -->
+                <nav id="desktop-nav-ong" class="desktop-nav hidden h-full flex-1 justify-center gap-8 px-8">
+                    <button onclick="switchOngTab('dashboard')" id="d-tab-ong-dashboard" class="h-full flex items-center gap-2 border-b-2 border-rose-500 text-gray-900 font-semibold text-sm px-2">Dashboard</button>
+                    <button onclick="switchOngTab('add-pet')" id="d-tab-ong-add" class="h-full flex items-center gap-2 border-b-2 border-transparent text-gray-500 font-medium text-sm px-2">Cadastrar Pet</button>
+                    <button onclick="switchOngTab('manage-pets')" id="d-tab-ong-manage" class="h-full flex items-center gap-2 border-b-2 border-transparent text-gray-500 font-medium text-sm px-2">Gerenciar</button>
+                </nav>
+
+                <div class="flex items-center gap-3">
+                    <span id="user-role-badge" class="hidden sm:inline-block px-2.5 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold uppercase tracking-wider"></span>
+                    <button id="mp-header-profile" class="mp-header-profile" onclick="mpShowPanel('profile')" title="Personalizar meu perfil"><img id="mp-header-avatar" alt="Avatar"><span id="mp-header-name">Meu perfil</span></button>
+                    <button onclick="logout()" class="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:text-rose-500 flex items-center justify-center transition-colors"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 w-full max-w-5xl mx-auto main-content overflow-y-auto overflow-x-hidden">
+            
+            <!-- VIEW ADOTANTE -->
+            <div id="view-adotante" class="w-full h-full flex flex-col md:flex-row md:items-start md:gap-6 p-4 md:p-6 mx-auto max-w-4xl">
+                <div id="sidebar-filters" class="hidden md:block w-64 shrink-0 space-y-6">
+                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-5">
+                        <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wider"><i class="fa-solid fa-sliders text-rose-500 mr-2"></i> Filtros</h2>
+                        <!-- Filtros Desktop -->
+                        <div>
+                            <label class="block text-[11px] font-bold uppercase text-gray-500 mb-2">Espécie</label>
+                            <div class="flex flex-col gap-2">
+                                <button onclick="setFilter('specie', 'all', this)" class="filter-btn-specie text-left px-3 py-2 rounded-lg text-sm bg-rose-50 text-rose-600 font-semibold">🐾 Todos</button>
+                                <button onclick="setFilter('specie', 'cachorro', this)" class="filter-btn-specie text-left px-3 py-2 rounded-lg text-sm text-gray-600">🐶 Cachorros</button>
+                                <button onclick="setFilter('specie', 'gato', this)" class="filter-btn-specie text-left px-3 py-2 rounded-lg text-sm text-gray-600">🐱 Gatos</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col h-full min-h-[500px] w-full max-w-md mx-auto relative">
+                    <!-- FEED DE CARDS -->
+                    <section id="section-feed" class="flex-1 flex flex-col">
+                        <div class="md:hidden flex gap-2 overflow-x-auto pb-3 mb-2 no-scrollbar">
+                            <button onclick="setFilter('specie', 'all', this)" class="filter-btn-specie shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold bg-gray-900 text-white">Todos</button>
+                            <button onclick="setFilter('specie', 'cachorro', this)" class="filter-btn-specie shrink-0 px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-200 text-gray-600">🐶 Cães</button>
+                            <button onclick="setFilter('specie', 'gato', this)" class="filter-btn-specie shrink-0 px-4 py-1.5 rounded-full text-sm font-medium bg-white border border-gray-200 text-gray-600">🐱 Gatos</button>
+                        </div>
+                        <div class="relative w-full aspect-[3/4] max-h-[600px] flex-1">
+                            <div id="card-deck" class="absolute inset-0 w-full h-full"></div>
+                            <div id="empty-deck-state" class="hidden absolute inset-0 bg-white rounded-3xl border border-gray-200 p-8 flex flex-col items-center justify-center text-center">
+                                <div class="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center text-2xl mb-4"><i class="fa-solid fa-face-frown-open"></i></div>
+                                <h3 class="text-lg font-bold text-gray-900 mb-1">Acabaram os pets</h3>
+                                <p class="text-gray-500 text-sm mb-6">Você já viu todos os animais na sua região.</p>
+                                <button onclick="resetSwiperDeck()" class="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl">Recomeçar Busca</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center gap-5 py-6">
+                            <button onclick="handleSwipeAction('dislike')" class="w-14 h-14 rounded-full bg-white text-red-500 border shadow-sm text-xl"><i class="fa-solid fa-xmark"></i></button>
+                            <button onclick="openPetDetailsModal()" class="w-10 h-10 rounded-full bg-white text-blue-500 border shadow-sm text-sm"><i class="fa-solid fa-info"></i></button>
+                            <button onclick="handleSwipeAction('like')" class="w-14 h-14 rounded-full bg-rose-500 text-white shadow-md text-2xl"><i class="fa-solid fa-heart"></i></button>
+                        </div>
+                    </section>
+
+                    <!-- MATCHES & CHAT -->
+                    <section id="section-matches" class="hidden flex-1 bg-white rounded-3xl border border-gray-200 shadow-sm flex flex-col overflow-hidden h-[600px] md:h-auto">
+                        <div class="p-3 border-b border-gray-100 bg-gray-50">
+                            <h3 class="text-[10px] font-bold uppercase text-gray-500 mb-2 pl-1">Seus Matches</h3>
+                            <div id="matches-horizontal-list" class="flex gap-3 overflow-x-auto pb-1 no-scrollbar min-h-[60px]"></div>
+                        </div>
+                        <div class="flex-1 flex flex-col relative bg-white">
+                            <div id="chat-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                                <i class="fa-regular fa-comments text-4xl text-gray-200 mb-3"></i>
+                                <p class="text-sm text-gray-500">Selecione um animal para abrir a conversa.</p>
+                            </div>
+                            <div id="chat-active-area" class="hidden flex-1 flex flex-col">
+                                <div class="p-3 border-b flex items-center gap-3 bg-white">
+                                    <img id="chat-pet-img" src="" class="w-10 h-10 rounded-full object-cover border">
+                                    <div><h4 id="chat-pet-name" class="font-bold text-sm text-gray-900">Pet Name</h4><p id="chat-ong-name" class="text-xs text-gray-500">ONG / Local</p></div>
+                                </div>
+                                <div id="chat-messages-container" class="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50"></div>
+                                <div class="p-3 bg-white border-t">
+                                    <form id="chat-form" onsubmit="handleSendChatMessage(event)" class="flex gap-2">
+                                        <input type="text" id="chat-input-text" aria-label="Mensagem para o chat" placeholder="Digite sua mensagem..." class="flex-1 bg-gray-100 text-gray-800 text-sm px-4 py-2.5 rounded-full outline-none">
+                                        <button type="submit" aria-label="Enviar mensagem" title="Enviar mensagem" class="w-11 h-11 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center shadow-sm"><i class="fa-solid fa-paper-plane"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- VIEW ONG ZERADA E FUNCIONAL -->
+            <div id="view-ong" class="hidden w-full flex-col p-4 md:p-6 space-y-6 max-w-5xl mx-auto">
+                <section id="section-ong-dashboard" class="space-y-6 animate-pop-in">
+                    <div class="bg-gray-900 rounded-3xl p-6 flex justify-between items-center text-white">
+                        <div><span class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1 block">Painel Administrativo</span><h2 class="text-2xl font-extrabold">Seus Animais</h2></div>
+                        <button onclick="switchOngTab('add-pet')" class="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold rounded-xl">Cadastrar Pet</button>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div class="bg-white p-5 rounded-2xl border shadow-sm"><span class="text-[11px] font-bold uppercase text-gray-500">Meus Pets Ativos</span><h3 id="metric-total-pets" class="text-2xl font-black text-gray-900 mt-1">0</h3></div>
+                        <div class="bg-white p-5 rounded-2xl border shadow-sm"><span class="text-[11px] font-bold uppercase text-gray-500">Matches Recebidos</span><h3 id="metric-total-matches" class="text-2xl font-black text-emerald-600 mt-1">0</h3></div>
+                        <div class="bg-white p-5 rounded-2xl border shadow-sm"><span class="text-[11px] font-bold uppercase text-gray-500">Candidatos Adoção</span><h3 id="metric-total-apps" class="text-2xl font-black text-orange-500 mt-1">0</h3></div>
+                    </div>
+                </section>
+
+                <section id="section-ong-add-pet" class="hidden bg-white rounded-3xl p-6 border shadow-sm max-w-2xl animate-pop-in">
+                    <h2 class="font-bold text-xl text-gray-900 border-b pb-4 mb-6">Cadastrar Novo Pet</h2>
+                    <form id="form-add-pet" onsubmit="handleAddNewPet(event)" class="space-y-5">
+                        <label class="flex items-center gap-3 p-4 border rounded-xl bg-gray-50 cursor-pointer">
+                            <input type="checkbox" id="input-pet-dupla" class="w-5 h-5 text-rose-500 rounded">
+                            <div><span class="block text-sm font-bold">Este anúncio é uma Adoção Dupla</span><span class="block text-[11px] text-gray-500">Cadastrando 2 pets juntos.</span></div>
+                        </label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Nome(s)</label><input type="text" id="input-pet-name" required class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Espécie</label><select id="input-pet-specie" class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"><option value="cachorro">Cachorro</option><option value="gato">Gato</option></select></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Idade</label><input type="text" id="input-pet-age" required class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Porte</label><select id="input-pet-size" class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"><option value="Pequeno">Pequeno</option><option value="Médio" selected>Médio</option><option value="Grande">Grande</option></select></div>
+                            <div><label class="block text-xs font-semibold text-gray-600 mb-1">Sexo</label><select id="input-pet-gender" class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"><option value="Macho">Macho</option><option value="Fêmea">Fêmea</option><option value="Casal">Casal</option></select></div>
+                        </div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">URL da Imagem</label><input type="url" id="input-pet-img" required class="w-full border rounded-xl px-4 py-2.5 text-sm outline-none"></div>
+                        <div><label class="block text-xs font-semibold text-gray-600 mb-1">Descrição</label><textarea id="input-pet-bio" rows="3" required class="w-full border rounded-xl p-4 text-sm outline-none"></textarea></div>
+                        <button type="submit" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black">Publicar Anúncio</button>
+                    </form>
+                </section>
+
+                <section id="section-ong-manage-pets" class="hidden bg-white rounded-3xl p-6 border shadow-sm animate-pop-in">
+                    <h2 class="font-bold text-xl border-b pb-4 mb-4">Meus Animais Cadastrados</h2>
+                    <table class="w-full text-left text-sm border-collapse">
+                        <thead><tr class="text-gray-400 font-semibold border-b text-xs uppercase"><th class="py-3 px-2">Anúncio</th><th class="py-3 px-2">Ações</th></tr></thead>
+                        <tbody id="ong-manage-table-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+
+        <nav id="mobile-bottom-nav" class="mobile-bottom-nav bg-white border-t flex justify-around">
+            <button onclick="switchTab('feed')" id="m-tab-feed" class="flex-1 py-3 flex flex-col items-center text-gray-900"><i class="fa-solid fa-fire text-lg"></i><span class="text-[10px] font-semibold">Feed</span></button>
+            <button onclick="switchTab('matches')" id="m-tab-matches" class="flex-1 py-3 flex flex-col items-center text-gray-400"><i class="fa-solid fa-comments text-lg"></i><span class="text-[10px] font-semibold">Chat</span></button>
+        </nav>
+    </div>
+
+    <!-- Modais Overlay -->
+    <div id="modal-pet-details" class="hidden fixed inset-0 z-50 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <!-- Mantido simples e fechável -->
+        <div class="bg-white rounded-3xl w-full max-w-md overflow-hidden relative">
+            <button onclick="closePetDetailsModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            <img id="modal-pet-img" src="" class="w-full h-64 object-cover">
+            <div class="p-6 space-y-4">
+                <h2 id="modal-pet-name-age" class="text-2xl font-black"></h2>
+                <p id="modal-pet-bio" class="text-sm text-gray-600"></p>
+                <div class="flex gap-3"><button onclick="handleSwipeAction('dislike'); closePetDetailsModal();" class="flex-1 py-3 border rounded-xl font-bold">Passar</button><button onclick="handleSwipeAction('like'); closePetDetailsModal();" class="flex-1 py-3 bg-rose-500 text-white rounded-xl font-bold">Dar Match</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-its-a-match" class="hidden fixed inset-0 z-[60] bg-gray-900/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-pop-in">
+        <div class="text-6xl text-rose-500 mb-4"><i class="fa-solid fa-heart"></i></div>
+        <h2 class="text-4xl font-black text-white mb-2">Deu Match!</h2>
+        <img id="match-modal-pet-img" src="" class="w-24 h-24 rounded-full border-4 border-white object-cover my-6">
+        <div id="match-options" class="w-full max-w-xs space-y-3">
+            <button onclick="goToChat()" class="w-full py-3.5 bg-rose-500 text-white font-bold rounded-xl">Ir para o Chat</button>
+            <button onclick="closeMatchModal()" class="w-full py-3.5 bg-transparent text-white font-semibold rounded-xl border border-gray-600">Voltar</button>
+        </div>
+    </div>
+
+    <script>
+        // ================= ALGORITMOS DE VALIDAÇÃO (RECEITA FEDERAL) =================
+
+        // Máscara de CPF em tempo real (000.000.000-00)
+        function maskCPF(i) {
+            let v = i.value.replace(/\D/g, "");
+            if (v.length > 11) v = v.slice(0, 11);
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            i.value = v;
+        }
+
+        // Máscara de CNPJ em tempo real (00.000.000/0001-00)
+        function maskCNPJ(i) {
+            let v = i.value.replace(/\D/g, "");
+            if (v.length > 14) v = v.slice(0, 14);
+            v = v.replace(/^(\d{2})(\d)/, "$1.$2");
+            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
+            v = v.replace(/\.(\d{3})(\d)/, ".$1/$2");
+            v = v.replace(/(\d{4})(\d)/, "$1-$2");
+            i.value = v;
+        }
+
+        // Validação Matemática Oficial do CPF
+        function validarCPF(cpf) {
+            cpf = cpf.replace(/[^\d]+/g,'');
+            if(cpf == '') return false;
+            if (cpf.length != 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+            let add = 0;
+            for (let i=0; i < 9; i ++) add += parseInt(cpf.charAt(i)) * (10 - i);
+            let rev = 11 - (add % 11);
+            if (rev == 10 || rev == 11) rev = 0;
+            if (rev != parseInt(cpf.charAt(9))) return false;
+            add = 0;
+            for (let i = 0; i < 10; i ++) add += parseInt(cpf.charAt(i)) * (11 - i);
+            rev = 11 - (add % 11);
+            if (rev == 10 || rev == 11) rev = 0;
+            if (rev != parseInt(cpf.charAt(10))) return false;
+            return true;
+        }
+
+        // Validação Matemática Oficial do CNPJ
+        function validarCNPJ(cnpj) {
+            cnpj = cnpj.replace(/[^\d]+/g,'');
+            if(cnpj == '') return false;
+            if (cnpj.length != 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+            let tamanho = cnpj.length - 2;
+            let numeros = cnpj.substring(0,tamanho);
+            let digitos = cnpj.substring(tamanho);
+            let soma = 0;
+            let pos = tamanho - 7;
+            for (let i = tamanho; i >= 1; i--) {
+                soma += numeros.charAt(tamanho - i) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+            if (resultado != digitos.charAt(0)) return false;
+            tamanho = tamanho + 1;
+            numeros = cnpj.substring(0,tamanho);
+            soma = 0;
+            pos = tamanho - 7;
+            for (let i = tamanho; i >= 1; i--) {
+                soma += numeros.charAt(tamanho - i) * pos--;
+                if (pos < 2) pos = 9;
+            }
+            resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+            if (resultado != digitos.charAt(1)) return false;
+            return true;
+        }
+
+        // MOCK DATABASE
+        const adminEmail = 'admin@matchpet.com'; 
+        const initialPets = [
+            { id: '1', name: 'Thor & Loki', specie: 'cachorro', breed: 'SRD', age: '3 meses', size: 'Médio', gender: 'Machos', location: 'São Paulo - SP', img: 'https://images.unsplash.com/photo-1591946614720-90a587da4a36?w=600&q=80', bio: 'Irmãos resgatados.', likes: 12, status: 'disponivel', isDupla: true, owner: adminEmail },
+            { id: '2', name: 'Luna', specie: 'gato', breed: 'Siamês', age: '2 anos', size: 'Pequeno', gender: 'Fêmea', location: 'Itapetininga - SP', img: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80', bio: 'Adora dormir ao sol.', likes: 4, status: 'disponivel', isDupla: false, owner: adminEmail },
+            { id: '3', name: 'Max', specie: 'cachorro', breed: 'Golden', age: '1 ano', size: 'Grande', gender: 'Macho', location: 'Itapetininga - SP', img: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&q=80', bio: 'Muito dócil.', likes: 30, status: 'disponivel', isDupla: false, owner: adminEmail }
+        ];
+
+        let currentUser = JSON.parse(localStorage.getItem('mp_user_v5')) || null;
+        let pets = JSON.parse(localStorage.getItem('mp_pets_v5')) || initialPets;
+        let activeMatches = JSON.parse(localStorage.getItem('mp_matches_v5')) || [];
+        let chatMessages = JSON.parse(localStorage.getItem('mp_chats_v5')) || {};
+        let applicants = JSON.parse(localStorage.getItem('mp_apps_v5')) || [];
+
+        let currentFilteredDeck = [], activeCardIndex = 0, activeChatPetId = null;
+        let activeFilters = { specie: 'all', size: 'all' };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentUser) initApp();
+        });
+
+        function toggleAuth(tab) {
+            document.getElementById('form-login').classList.toggle('hidden', tab === 'register');
+            document.getElementById('form-register').classList.toggle('hidden', tab === 'login');
+        }
+
+        // Lógica Dinâmica do Formulário
+        function toggleRegFields() {
+            const role = document.getElementById('reg-role').value;
+            const fieldsPF = document.getElementById('fields-pf');
+            const fieldsPJ = document.getElementById('fields-pj');
+            
+            if(role === 'adotante') {
+                fieldsPF.classList.remove('hidden');
+                fieldsPJ.classList.add('hidden');
+                document.getElementById('reg-nascimento').required = true;
+                document.getElementById('reg-cpf').required = false;
+                document.getElementById('reg-nome-pf').required = true;
+                document.getElementById('reg-cnpj').required = false;
+                document.getElementById('reg-nome-pj').required = false;
+            } else {
+                fieldsPF.classList.add('hidden');
+                fieldsPJ.classList.remove('hidden');
+                document.getElementById('reg-nascimento').required = false;
+                document.getElementById('reg-cpf').required = false;
+                document.getElementById('reg-nome-pf').required = false;
+                document.getElementById('reg-cnpj').required = false;
+                document.getElementById('reg-nome-pj').required = true;
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            currentUser = { name: 'Usuário Teste', email: document.getElementById('login-email').value, city: 'Itapetininga - SP', role: 'adotante' };
+            localStorage.setItem('mp_user_v5', JSON.stringify(currentUser));
+            initApp();
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const role = document.getElementById('reg-role').value;
+            let finalName = "";
+
+            if(role === 'adotante') {
+                // VALIDAÇÃO CPF
+                const cpfInput = document.getElementById('reg-cpf').value;
+                if (cpfInput.trim() && !validarCPF(cpfInput)) {
+                    alert("CPF inválido. No modo de teste, você pode deixar o campo em branco.");
+                    return;
+                }
+
+                // VALIDAÇÃO IDADE (MAIORIDADE)
+                const dataNasc = new Date(document.getElementById('reg-nascimento').value);
+                const hoje = new Date();
+                let idade = hoje.getFullYear() - dataNasc.getFullYear();
+                const m = hoje.getMonth() - dataNasc.getMonth();
+                if (m < 0 || (m === 0 && hoje.getDate() < dataNasc.getDate())) idade--;
+
+                if (idade < 18) {
+                    alert("⚠️ AVISO LEGAL: O cadastro de adotantes é restrito a maiores de 18 anos. É necessária a maioridade civil para assinatura do Termo de Adoção (Art. 5º do Código Civil).");
+                    return; 
+                }
+                finalName = document.getElementById('reg-nome-pf').value;
+
+            } else {
+                // VALIDAÇÃO CNPJ (ONG / Empresa)
+                const cnpjInput = document.getElementById('reg-cnpj').value;
+                if (cnpjInput.trim() && !validarCNPJ(cnpjInput)) {
+                    alert("CNPJ inválido. No modo de teste, você pode deixar o campo em branco.");
+                    return;
+                }
+                finalName = document.getElementById('reg-nome-pj').value;
+            }
+
+            // Se passou em todas as validações, cria o utilizador
+            currentUser = {
+                name: finalName,
+                email: document.getElementById('reg-email').value.toLowerCase(),
+                city: document.getElementById('reg-city').value,
+                role: role
+            };
+            
+            localStorage.setItem('mp_user_v5', JSON.stringify(currentUser));
+            initApp();
+        }
+
+        function logout() { localStorage.removeItem('mp_user_v5'); location.reload(); }
+
+        function initApp() {
+            document.getElementById('view-auth').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('header-city-display').innerText = `📍 ${currentUser.city}`;
+            document.getElementById('user-role-badge').innerText = currentUser.role.toUpperCase();
+            document.getElementById('user-role-badge').classList.remove('hidden');
+
+            if (currentUser.role === 'ong' || currentUser.role === 'empresa') {
+                document.getElementById('view-adotante').classList.add('hidden');
+                document.getElementById('view-ong').classList.remove('hidden');
+                document.getElementById('desktop-nav-adotante').classList.add('hidden');
+                document.getElementById('desktop-nav-ong').classList.remove('hidden');
+                document.getElementById('mobile-bottom-nav').classList.add('hidden');
+                updateOngDashboard();
+                renderOngManageTable();
+            } else {
+                document.getElementById('view-adotante').classList.remove('hidden');
+                document.getElementById('view-ong').classList.add('hidden');
+                applyFiltersAndRenderDeck();
+                renderMatchesList();
+            }
+        }
+
+        // ================= ALGORITMO E DECK =================
+        function setFilter(type, val, btnElement) {
+            activeFilters[type] = val;
+            applyFiltersAndRenderDeck();
+        }
+
+        function applyFiltersAndRenderDeck() {
+            let filtered = pets.filter(p => {
+                if (p.status !== 'disponivel') return false;
+                if (activeFilters.specie !== 'all' && p.specie !== activeFilters.specie) return false;
+                return true;
+            });
+            // Prioriza local
+            currentFilteredDeck = filtered.sort((a, b) => {
+                const aLoc = a.location.toLowerCase().includes(currentUser.city.toLowerCase());
+                const bLoc = b.location.toLowerCase().includes(currentUser.city.toLowerCase());
+                if(aLoc && !bLoc) return -1; if(!aLoc && bLoc) return 1; return 0;
+            });
+            activeCardIndex = 0; renderDeckCards();
+        }
+
+        function renderDeckCards() {
+            const deck = document.getElementById('card-deck');
+            deck.innerHTML = '';
+            if (activeCardIndex >= currentFilteredDeck.length) {
+                document.getElementById('empty-deck-state').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('empty-deck-state').classList.add('hidden');
+
+            const visiblePets = currentFilteredDeck.slice(activeCardIndex, activeCardIndex + 2);
+            visiblePets.reverse().forEach((pet, index) => {
+                const isTop = index === visiblePets.length - 1;
+                const card = document.createElement('div');
+                card.className = `swipe-card absolute inset-0 bg-white rounded-3xl overflow-hidden shadow-xl flex flex-col ${isTop ? 'z-20 cursor-grab' : 'z-10 scale-95 opacity-80 pointer-events-none'}`;
+                card.id = `pet-card-${pet.id}`;
+                
+                let badgeHtml = pet.isDupla ? `<div class="absolute top-4 left-4 z-40 bg-purple-600 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-xl">Adoção Dupla</div>` : '';
+
+                card.innerHTML = `
+                    <div class="relative flex-1 bg-gray-100 overflow-hidden">
+                        ${badgeHtml}
+                        <img src="${pet.img}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-gray-900/90 to-transparent flex items-end p-6 text-white">
+                            <div><h3 class="text-3xl font-extrabold">${pet.name}, ${pet.age}</h3><p class="text-sm"><i class="fa-solid fa-location-dot"></i> ${pet.location}</p></div>
+                        </div>
+                    </div>`;
+                if (isTop) attachDragEvents(card, pet);
+                deck.appendChild(card);
+            });
+        }
+
+        function attachDragEvents(card, pet) {
+            let startX = 0, currentX = 0, isDragging = false;
+            const onStart = e => { isDragging = true; card.classList.add('dragging'); startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; };
+            const onMove = e => { if (!isDragging) return; currentX = (e.type.includes('touch') ? e.touches[0].clientX : e.clientX) - startX; card.style.transform = `translate3d(${currentX}px, 0, 0) rotate(${currentX * 0.05}deg)`; };
+            const onEnd = () => { if (!isDragging) return; isDragging = false; card.classList.remove('dragging'); if (currentX > 100) executeSwipeAction('like', card, pet); else if (currentX < -100) executeSwipeAction('dislike', card, pet); else card.style.transform = ''; };
+            
+            card.addEventListener('touchstart', onStart, {passive:true}); window.addEventListener('touchmove', onMove, {passive:true}); window.addEventListener('touchend', onEnd);
+            card.addEventListener('mousedown', onStart); window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onEnd);
+        }
+
+        function handleSwipeAction(act) {
+            if(activeCardIndex < currentFilteredDeck.length) executeSwipeAction(act, document.getElementById(`pet-card-${currentFilteredDeck[activeCardIndex].id}`), currentFilteredDeck[activeCardIndex]);
+        }
+
+        function executeSwipeAction(act, card, pet) {
+            card.style.transform = `translate3d(${act === 'like' ? 1000 : -1000}px, 0, 0)`; card.style.opacity = '0';
+            if (act === 'like') { registerMatch(pet); }
+            setTimeout(() => { activeCardIndex++; renderDeckCards(); }, 200);
+        }
+        function resetSwiperDeck() { applyFiltersAndRenderDeck(); }
+
+        // ================= MATCH E CHAT =================
+        function registerMatch(pet) {
+            if (!activeMatches.some(m => m.id === pet.id)) {
+                activeMatches.push(pet);
+                if (!chatMessages[pet.id]) chatMessages[pet.id] = [];
+                saveData(); renderMatchesList();
+                document.getElementById('match-modal-pet-img').src = pet.img;
+                document.getElementById('modal-its-a-match').classList.remove('hidden');
+            }
+        }
+        function closeMatchModal() { document.getElementById('modal-its-a-match').classList.add('hidden'); }
+        function goToChat() { closeMatchModal(); switchTab('matches'); selectChatPet(activeMatches[activeMatches.length-1].id); }
+        function openPetDetailsModal() { /* Lógica igual ao anterior */ }
+        function closePetDetailsModal() { document.getElementById('modal-pet-details').classList.add('hidden'); }
+
+        function renderMatchesList() {
+            const cont = document.getElementById('matches-horizontal-list');
+            cont.innerHTML = '';
+            activeMatches.forEach(p => {
+                const div = document.createElement('div'); div.className = 'cursor-pointer';
+                div.onclick = () => selectChatPet(p.id);
+                div.innerHTML = `<img src="${p.img}" class="w-12 h-12 rounded-full border-2 border-rose-500 object-cover">`;
+                cont.appendChild(div);
+            });
+        }
+        function selectChatPet(id) {
+            activeChatPetId = id; const p = pets.find(x => x.id === id);
+            document.getElementById('chat-placeholder').classList.add('hidden'); document.getElementById('chat-active-area').classList.remove('hidden');
+            document.getElementById('chat-pet-img').src = p.img; document.getElementById('chat-pet-name').innerText = p.name;
+            renderChatMessages();
+        }
+        function renderChatMessages() {
+            const cont = document.getElementById('chat-messages-container'); cont.innerHTML = '';
+            (chatMessages[activeChatPetId] || []).forEach(m => {
+                const u = m.sender === 'user';
+                cont.innerHTML += `<div class="flex ${u ? 'justify-end' : 'justify-start'}"><div class="${u ? 'bg-rose-500 text-white' : 'bg-white border text-gray-700'} max-w-[80%] px-4 py-2 rounded-xl text-sm">${m.text}</div></div>`;
+            });
+        }
+        function handleSendChatMessage(e) {
+            e.preventDefault(); const inp = document.getElementById('chat-input-text');
+            if(!inp.value.trim() || !activeChatPetId) return;
+            chatMessages[activeChatPetId].push({ sender: 'user', text: inp.value }); inp.value = '';
+            saveData(); renderChatMessages();
+        }
+
+        // ================= PAINEL DA ONG (ISOLADO PARA O USUÁRIO) =================
+        function updateOngDashboard() {
+            const myPets = pets.filter(p => p.owner === currentUser.email);
+            const totalMatches = myPets.reduce((acc, p) => acc + (p.likes || 0), 0);
+            document.getElementById('metric-total-pets').innerText = myPets.length;
+            document.getElementById('metric-total-matches').innerText = totalMatches;
+            document.getElementById('metric-total-apps').innerText = 0; // Simplificado
+        }
+
+        function handleAddNewPet(e) {
+            e.preventDefault();
+            const newPet = {
+                id: String(Date.now()),
+                name: document.getElementById('input-pet-name').value,
+                specie: document.getElementById('input-pet-specie').value,
+                breed: 'SRD', age: document.getElementById('input-pet-age').value,
+                size: document.getElementById('input-pet-size').value, gender: document.getElementById('input-pet-gender').value,
+                location: currentUser.city, img: document.getElementById('input-pet-img').value, bio: document.getElementById('input-pet-bio').value,
+                likes: 0, status: 'disponivel', isDupla: document.getElementById('input-pet-dupla').checked,
+                owner: currentUser.email
+            };
+            pets.unshift(newPet); saveData();
+            updateOngDashboard(); renderOngManageTable(); document.getElementById('form-add-pet').reset();
+            switchOngTab('manage-pets');
+        }
+
+        function renderOngManageTable() {
+            const tbody = document.getElementById('ong-manage-table-body');
+            tbody.innerHTML = '';
+            const myPets = pets.filter(p => p.owner === currentUser.email);
+            
+            if(myPets.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400 text-sm">Você ainda não tem animais cadastrados.</td></tr>`;
+                return;
+            }
+
+            myPets.forEach(pet => {
+                tbody.innerHTML += `
+                    <tr class="border-b">
+                        <td class="py-3 px-2 flex items-center gap-3">
+                            <img src="${pet.img}" class="w-10 h-10 rounded-lg object-cover">
+                            <div><span class="font-bold text-sm block">${pet.name}</span><span class="text-xs text-gray-500">${pet.specie}</span></div>
+                        </td>
+                        <td class="py-3 px-2 text-right">
+                            <button onclick="deletePet('${pet.id}')" class="text-red-500 text-sm"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function deletePet(id) {
+            if (confirm('Deletar anúncio?')) { pets = pets.filter(p => p.id !== id); saveData(); renderOngManageTable(); updateOngDashboard(); }
+        }
+
+        function switchTab(t) {
+            ['feed','matches'].forEach(x => document.getElementById(`section-${x}`).classList.toggle('hidden', x!==t));
+            ['feed','matches'].forEach(x => { const el=document.getElementById(`m-tab-${x}`); if(el) el.className = x===t ? 'flex-1 py-3 flex flex-col items-center text-gray-900' : 'flex-1 py-3 flex flex-col items-center text-gray-400'; });
+        }
+        function switchOngTab(t) {
+            ['dashboard','add-pet','manage-pets'].forEach(x => document.getElementById(`section-ong-${x}`).classList.toggle('hidden', x!==t));
+        }
+
+        function saveData() {
+            localStorage.setItem('mp_pets_v5', JSON.stringify(pets));
+            localStorage.setItem('mp_matches_v5', JSON.stringify(activeMatches));
+            localStorage.setItem('mp_chats_v5', JSON.stringify(chatMessages));
+        }
+    </script>
+<script>
+/* Match Pet enhancement layer - additive: keeps original Receita Federal validation flow */
+(function(){
+  const $ = id => document.getElementById(id);
+  const read = (k, fallback) => { try { const v=localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const uid = () => (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now())+Math.random().toString(16).slice(2);
+  const persistExtra = () => {
+    localStorage.setItem('mp_users_v6', JSON.stringify(users));
+    localStorage.setItem('mp_favorites_v6', JSON.stringify(favorites));
+    localStorage.setItem('mp_apps_v6', JSON.stringify(applications));
+    localStorage.setItem('mp_notifications_v6', JSON.stringify(notifications));
+    localStorage.setItem('mp_lost_v6', JSON.stringify(lostFound));
+    localStorage.setItem('mp_reports_v6', JSON.stringify(reports));
+    localStorage.setItem('mp_campaigns_v6', JSON.stringify(campaigns));
+    localStorage.setItem('mp_preferences_v6', JSON.stringify(preferences));
+    localStorage.setItem('mp_adoptions_v6', JSON.stringify(adoptions));
+  };
+  let users = read('mp_users_v6', []);
+  let favorites = read('mp_favorites_v6', []);
+  let applications = read('mp_apps_v6', []);
+  let notifications = read('mp_notifications_v6', []);
+  let lostFound = read('mp_lost_v6', []);
+  let reports = read('mp_reports_v6', []);
+  let campaigns = read('mp_campaigns_v6', []);
+  let preferences = read('mp_preferences_v6', {});
+  let adoptions = read('mp_adoptions_v6', []);
+  let editPetId = null;
+  let selectedPetDetailsId = null;
+  let compatibilityAnswers = {};
+  const oldInitApp = window.initApp;
+
+  // Support the current alphanumeric CNPJ format while preserving CPF validation.
+  window.maskCNPJ = function(input){
+    let v = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,14);
+    if(v.length>2) v=v.slice(0,2)+'.'+v.slice(2);
+    if(v.length>6) v=v.slice(0,6)+'.'+v.slice(6);
+    if(v.length>10) v=v.slice(0,10)+'/'+v.slice(10);
+    if(v.length>15) v=v.slice(0,15)+'-'+v.slice(15);
+    input.value=v;
+  };
+  window.validarCNPJ = function(value){
+    const cnpj=String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+    if(cnpj.length!==14 || /^([A-Z0-9])\1{13}$/.test(cnpj)) return false;
+    const digitValue = ch => ch.charCodeAt(0)-48;
+    const calc = (base, weights) => { let sum=0; for(let i=0;i<weights.length;i++) sum+=digitValue(base[i])*weights[i]; const r=sum%11; return r<2?0:11-r; };
+    const first=calc(cnpj.slice(0,12),[5,4,3,2,9,8,7,6,5,4,3,2]);
+    if(first!==Number(cnpj[12])) return false;
+    const second=calc(cnpj.slice(0,13),[6,5,4,3,2,9,8,7,6,5,4,3,2]);
+    return second===Number(cnpj[13]);
+  };
+
+  function addStyles(){
+    const style=document.createElement('style');
+    style.textContent=`
+      .mp-extra-nav{display:flex;gap:12px;flex-wrap:wrap;margin:0 0 18px;padding:12px 16px;background:#fff;border-top:1px solid #f3f4f6;border-bottom:1px solid #e5e7eb}
+      .mp-nav-group{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:3px 10px;border-right:1px solid #e5e7eb}
+      .mp-nav-group:last-child{border-right:0}
+      .mp-nav-label{font-size:9px;letter-spacing:.09em;color:#9ca3af;font-weight:800;margin-right:2px}
+      .mp-extra-nav button,.mp-btn{border:1px solid #e5e7eb;border-radius:12px;padding:9px 13px;font-size:13px;font-weight:700;background:white;color:#374151;cursor:pointer}
+      .mp-extra-nav button:hover,.mp-btn:hover{border-color:#fda4af;background:#fff1f2}
+      .mp-extra-nav button.active,.mp-btn-primary{background:#f43f5e;color:white;border-color:#f43f5e}
+      .mp-profile-avatar{width:84px;height:84px;border-radius:9999px;object-fit:cover;background:#ffe4e6;border:3px solid white;box-shadow:0 2px 8px #00000012}
+      .mp-profile-upload{display:inline-flex;align-items:center;gap:8px;border:1px dashed #fda4af;border-radius:12px;padding:10px 14px;color:#be123c;font-size:13px;font-weight:700;cursor:pointer}
+      .mp-profile-section{border:1px solid #f3f4f6;border-radius:16px;padding:16px}
+      .mp-header-profile{display:flex;align-items:center;gap:8px;border:1px solid #f3f4f6;border-radius:999px;padding:4px 10px 4px 4px;background:white;cursor:pointer;max-width:180px}
+      .mp-header-profile img{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#ffe4e6}
+      .mp-header-profile span{font-size:12px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .mp-panel{background:#fff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;margin:16px;box-shadow:0 2px 8px #00000008}
+      .mp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+      .mp-field{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;font-size:14px;background:white}
+      .mp-pet-row{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #f3f4f6}
+      .mp-pet-row img{width:64px;height:64px;object-fit:cover;border-radius:12px}
+      .mp-tag{display:inline-block;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:700;background:#fce7f3;color:#9d174d}
+      .mp-alert{padding:12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px;line-height:1.5;margin:12px 0}
+      .mp-modal-scroll{max-height:90vh;overflow:auto}
+      @media(max-width:640px){.mp-panel{margin:10px;padding:15px}.mp-extra-nav{padding:10px;gap:8px}.mp-nav-group{width:100%;border-right:0;border-bottom:1px solid #f3f4f6;padding:7px 0}.mp-nav-group:last-child{border-bottom:0}.mp-nav-label{width:100%}.mp-extra-nav button{flex:1}.mp-header-profile span{display:none}.mp-header-profile{padding:4px}}
+    `;
+    document.head.appendChild(style);
+  }
+  function ensureFeatureUI(){
+    const main=document.querySelector('#app-container main'); if(!main || $('mp-extra-nav')) return;
+    const nav=document.createElement('div'); nav.id='mp-extra-nav'; nav.className='mp-extra-nav';
+    nav.innerHTML=`<div class="mp-nav-group"><span class="mp-nav-label">MINHA CONTA</span><button data-mp-tab="profile" onclick="mpShowPanel('profile')">👤 Meu perfil</button><button data-mp-tab="notifications" onclick="mpShowPanel('notifications')">🔔 Notificações <span id="mp-notification-count"></span></button></div><div class="mp-nav-group"><span class="mp-nav-label">ADOÇÃO</span><button data-mp-tab="favorites" onclick="mpShowPanel('favorites')">♥ Favoritos</button><button data-mp-tab="applications" onclick="mpShowPanel('applications')">📋 Candidaturas</button><button data-mp-tab="compatibility" onclick="mpShowPanel('compatibility')">✨ Compatibilidade</button></div><div class="mp-nav-group"><span class="mp-nav-label">COMUNIDADE</span><button data-mp-tab="lost" onclick="mpShowPanel('lost')">🐾 Perdidos/Encontrados</button><button data-mp-tab="campaigns" onclick="mpShowPanel('campaigns')">💚 Campanhas</button></div>`;
+    main.insertBefore(nav,main.firstChild);
+    const features=document.createElement('div'); features.id='mp-feature-panels';
+    features.innerHTML=`
+      <section id="mp-panel-profile" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-5"><div><h2 class="text-xl font-extrabold">Meu perfil</h2><p class="text-sm text-gray-500 mt-1">Personalize como você aparece no Match Pet.</p></div><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><form id="mp-profile-form" class="space-y-5"><div class="mp-profile-section flex flex-col sm:flex-row items-center gap-5"><img id="mp-profile-preview" class="mp-profile-avatar" alt="Foto do perfil"><div class="flex-1 text-center sm:text-left"><h3 class="font-bold">Sua foto</h3><p class="text-sm text-gray-500 my-1">Opcional. Escolha uma imagem do seu dispositivo.</p><label class="mp-profile-upload mt-2"><i class="fa-solid fa-camera"></i> Escolher foto<input id="mp-profile-photo" type="file" accept="image/*" class="hidden"></label><button type="button" class="mp-btn ml-1 mt-2" onclick="mpRemoveProfilePhoto()">Remover foto</button><p id="mp-photo-status" class="text-xs text-gray-400 mt-2">Nenhuma foto escolhida.</p></div></div><div class="mp-profile-section space-y-4"><h3 class="font-bold">Informações de exibição</h3><label class="block text-sm font-semibold">Nome que aparece no site<input id="mp-profile-name" required maxlength="70" class="mp-field mt-1" placeholder="Como quer ser chamado"></label><label class="block text-sm font-semibold">Cidade - UF<input id="mp-profile-city" required maxlength="100" class="mp-field mt-1" placeholder="Ex.: Itapetininga - SP"></label><div><span class="block text-xs font-semibold text-gray-500">E-mail da conta</span><p id="mp-profile-email" class="text-sm text-gray-700 mt-1 break-all"></p><p class="text-xs text-gray-400 mt-1">O e-mail é exibido apenas aqui; não pode ser alterado nesta tela.</p></div></div><div class="flex flex-wrap gap-2"><button class="mp-btn mp-btn-primary" type="submit"><i class="fa-solid fa-floppy-disk mr-1"></i> Salvar perfil</button><button class="mp-btn" type="button" onclick="mpLoadProfile()">Descartar alterações</button></div><p class="mp-alert">Os dados dos animais, candidaturas e demais recursos não serão alterados. A foto e o nome de exibição ficam salvos neste navegador.</p></form></section>
+      <section id="mp-panel-favorites" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Meus favoritos</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><div id="mp-favorites-list"></div></section>
+      <section id="mp-panel-applications" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Candidaturas de adoção</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><div id="mp-applications-list"></div><div class="mt-6"><h3 class="font-bold mb-2">Acompanhamento pós-adoção</h3><div id="mp-followups-list"></div></div></section>
+      <section id="mp-panel-compatibility" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Encontre um pet compatível</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><p class="text-sm text-gray-500 mb-4">Responda para priorizar animais que combinam com sua rotina. A pontuação é apenas uma sugestão, não garante compatibilidade.</p><form id="mp-compat-form" class="mp-grid"><label class="text-sm font-semibold">Moradia<select id="mp-home" class="mp-field mt-1"><option value="qualquer">Qualquer</option><option value="casa">Casa</option><option value="apartamento">Apartamento</option></select></label><label class="text-sm font-semibold">Porte preferido<select id="mp-size" class="mp-field mt-1"><option value="all">Qualquer</option><option>Pequeno</option><option>Médio</option><option>Grande</option></select></label><label class="text-sm font-semibold">Tempo sozinho por dia<select id="mp-alone" class="mp-field mt-1"><option value="0-3">0 a 3 horas</option><option value="4-6">4 a 6 horas</option><option value="7+">7 horas ou mais</option></select></label><label class="text-sm font-semibold">Nível de atividade<select id="mp-activity" class="mp-field mt-1"><option value="calmo">Calmo</option><option value="moderado">Moderado</option><option value="ativo">Ativo</option></select></label><label class="text-sm font-semibold">Já tem outros animais?<select id="mp-other" class="mp-field mt-1"><option value="nao">Não</option><option value="sim">Sim</option></select></label><label class="text-sm font-semibold">Espécie preferida<select id="mp-specie" class="mp-field mt-1"><option value="all">Qualquer</option><option value="cachorro">Cachorro</option><option value="gato">Gato</option></select></label><button class="mp-btn mp-btn-primary" type="submit">Salvar preferências e recomendar</button></form><div id="mp-recommendations" class="mt-5"></div></section>
+      <section id="mp-panel-lost" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Animais perdidos e encontrados</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><form id="mp-lost-form" class="mp-grid mb-5"><label class="text-sm font-semibold">Tipo<select id="mp-lost-type" class="mp-field mt-1"><option value="perdido">Animal perdido</option><option value="encontrado">Animal encontrado</option></select></label><label class="text-sm font-semibold">Nome / descrição<input id="mp-lost-name" required class="mp-field mt-1" maxlength="100"></label><label class="text-sm font-semibold">Cidade - UF<input id="mp-lost-city" required class="mp-field mt-1" maxlength="100"></label><label class="text-sm font-semibold">Contato para retorno<input id="mp-lost-contact" required class="mp-field mt-1" maxlength="120"></label><label class="text-sm font-semibold">Foto (URL opcional)<input id="mp-lost-img" type="url" class="mp-field mt-1"></label><label class="text-sm font-semibold">Detalhes<textarea id="mp-lost-desc" class="mp-field mt-1" maxlength="500"></textarea></label><button class="mp-btn mp-btn-primary" type="submit">Publicar aviso</button></form><div id="mp-lost-list"></div></section>
+      <section id="mp-panel-campaigns" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Campanhas e apoio às ONGs</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><div id="mp-campaign-create" class="hidden"><form id="mp-campaign-form" class="mp-grid mb-5"><label class="text-sm font-semibold">Nome da campanha<input id="mp-campaign-name" required class="mp-field mt-1" maxlength="100"></label><label class="text-sm font-semibold">Objetivo / necessidade<input id="mp-campaign-goal" required class="mp-field mt-1" maxlength="250"></label><label class="text-sm font-semibold">Meta (R$)<input id="mp-campaign-target" type="number" min="0" step="0.01" class="mp-field mt-1"></label><button class="mp-btn mp-btn-primary" type="submit">Criar campanha</button></form></div><div id="mp-campaign-list"></div><p class="mp-alert">As campanhas servem para divulgar necessidades. Este protótipo não processa pagamentos ou doações financeiras.</p></section>
+      <section id="mp-panel-notifications" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Notificações</h2><button class="mp-btn" onclick="mpMarkNotificationsRead()">Marcar todas como lidas</button></div><div id="mp-notifications-list"></div></section>
+      <section id="mp-panel-admin-apps" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Solicitações recebidas</h2><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><div id="mp-admin-apps-list"></div></section>
+      <section id="mp-panel-edit-pet" class="mp-panel hidden"><div class="flex items-center justify-between gap-3 mb-4"><h2 class="text-xl font-extrabold">Editar anúncio</h2><button class="mp-btn" onclick="mpShowPanel('none')">Cancelar</button></div><form id="mp-edit-pet-form" class="mp-grid"><label class="text-sm font-semibold">Nome<input id="mp-edit-name" required class="mp-field mt-1"></label><label class="text-sm font-semibold">Espécie<select id="mp-edit-specie" class="mp-field mt-1"><option value="cachorro">Cachorro</option><option value="gato">Gato</option></select></label><label class="text-sm font-semibold">Idade<input id="mp-edit-age" required class="mp-field mt-1"></label><label class="text-sm font-semibold">Porte<select id="mp-edit-size" class="mp-field mt-1"><option>Pequeno</option><option>Médio</option><option>Grande</option></select></label><label class="text-sm font-semibold">Sexo<input id="mp-edit-gender" class="mp-field mt-1"></label><label class="text-sm font-semibold">Foto (URL)<input id="mp-edit-img" type="url" required class="mp-field mt-1"></label><label class="text-sm font-semibold">Cidade - UF<input id="mp-edit-location" required class="mp-field mt-1"></label><label class="text-sm font-semibold">Saúde / vacinação<input id="mp-edit-health" class="mp-field mt-1"></label><label class="text-sm font-semibold">Temperamento / descrição<textarea id="mp-edit-bio" required class="mp-field mt-1"></textarea></label><button class="mp-btn mp-btn-primary" type="submit">Salvar alterações</button></form></section>
+      <section id="mp-panel-report" class="mp-panel hidden"><h2 class="text-xl font-extrabold mb-4">Denunciar anúncio</h2><form id="mp-report-form" class="space-y-3"><label class="block text-sm font-semibold">Motivo<select id="mp-report-reason" class="mp-field mt-1"><option>Informação falsa</option><option>Suspeita de maus-tratos</option><option>Possível fraude</option><option>Outro</option></select></label><label class="block text-sm font-semibold">Detalhes<textarea id="mp-report-details" class="mp-field mt-1" maxlength="500"></textarea></label><button class="mp-btn mp-btn-primary">Enviar denúncia</button><button type="button" class="mp-btn" onclick="mpShowPanel('none')">Cancelar</button></form></section>
+      <section id="mp-panel-detail-extra" class="mp-panel hidden"><div id="mp-detail-extra-content"></div></section>
+    `;
+    main.appendChild(features);
+    const viewOng=$('view-ong');
+    if(viewOng){
+      const extra=document.createElement('div'); extra.className='px-4 pb-5 flex flex-wrap gap-2';
+      extra.innerHTML='<button class="mp-btn" onclick="mpShowPanel(\'admin-apps\')">📋 Gerenciar candidaturas</button><button class="mp-btn" onclick="mpShowPanel(\'campaigns\')">💚 Campanhas</button><button class="mp-btn" onclick="mpShowPanel(\'notifications\')">🔔 Notificações</button>';
+      viewOng.appendChild(extra);
+    }
+    const cardActions=document.querySelector('#section-feed .flex.items-center.justify-center.gap-5');
+    if(cardActions){const fav=document.createElement('button');fav.id='mp-fav-current';fav.className='w-10 h-10 rounded-full bg-white text-amber-500 border shadow-sm';fav.title='Salvar nos favoritos';fav.innerHTML='<i class="fa-solid fa-star"></i>';fav.onclick=()=>window.mpToggleCurrentFavorite();cardActions.insertBefore(fav,cardActions.lastElementChild);}
+    // Extend pet form without deleting existing fields.
+    const petForm=$('form-add-pet'); if(petForm && !$('mp-pet-health')){const extra=document.createElement('div');extra.className='grid grid-cols-1 md:grid-cols-2 gap-4';extra.innerHTML='<div><label class="block text-xs font-semibold text-gray-600 mb-1">Saúde / vacinação</label><input id="mp-pet-health" class="mp-field" placeholder="Vacinas, castração, vermifugação"></div><div><label class="block text-xs font-semibold text-gray-600 mb-1">Compatibilidade / necessidades</label><input id="mp-pet-needs" class="mp-field" placeholder="Ex.: convive com gatos, precisa de quintal"></div><div><label class="block text-xs font-semibold text-gray-600 mb-1">Raça (se conhecida)</label><input id="mp-pet-breed" class="mp-field" placeholder="SRD, Siamês..."></div><div><label class="block text-xs font-semibold text-gray-600 mb-1">Nível de energia</label><select id="mp-pet-energy" class="mp-field"><option value="moderado">Moderado</option><option value="calmo">Calmo</option><option value="ativo">Ativo</option></select></div>' ; petForm.insertBefore(extra,petForm.querySelector('button[type=submit]'));}
+    // Replace basic filters with expanded filter panel.
+    const side=$('sidebar-filters'); if(side && !$('mp-advanced-filters')){const box=document.createElement('div');box.id='mp-advanced-filters';box.className='bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-3 mt-4';box.innerHTML='<h3 class="font-bold text-sm">Mais filtros</h3><label class="block text-xs font-semibold">Porte<select id="mp-filter-size" class="mp-field mt-1"><option value="all">Todos</option><option>Pequeno</option><option>Médio</option><option>Grande</option></select></label><label class="block text-xs font-semibold">Sexo<select id="mp-filter-gender" class="mp-field mt-1"><option value="all">Todos</option><option>Macho</option><option>Fêmea</option><option>Casal</option></select></label><label class="block text-xs font-semibold">Cidade<input id="mp-filter-city" class="mp-field mt-1" placeholder="Qualquer cidade"></label><label class="block text-xs font-semibold">Idade máxima (anos)<input id="mp-filter-age" type="number" min="0" class="mp-field mt-1" placeholder="Sem limite"></label><button class="mp-btn mp-btn-primary w-full" onclick="mpApplyAdvancedFilters()">Aplicar filtros</button><button class="mp-btn w-full" onclick="mpClearAdvancedFilters()">Limpar filtros</button>';side.appendChild(box);}
+  }
+
+  window.mpShowPanel=function(name){
+    document.querySelectorAll('#mp-feature-panels > section').forEach(s=>s.classList.add('hidden'));
+    document.querySelectorAll('#mp-extra-nav [data-mp-tab]').forEach(b=>b.classList.toggle('active',b.dataset.mpTab===name));
+    if(name && name!=='none'){const el=$('mp-panel-'+name);if(el)el.classList.remove('hidden');}
+    if(name==='profile')mpLoadProfile();
+    if(name==='favorites') mpRenderFavorites(); if(name==='applications') mpRenderApplications(); if(name==='compatibility') mpLoadPreferences(); if(name==='lost')mpRenderLost(); if(name==='campaigns')mpRenderCampaigns(); if(name==='notifications')mpRenderNotifications(); if(name==='admin-apps')mpRenderAdminApplications();
+    if(name==='campaigns') $('mp-campaign-create')?.classList.toggle('hidden',!currentUser || !['ong','empresa'].includes(currentUser.role));
+    if(name==='admin-apps') document.querySelector('#mp-panel-admin-apps')?.scrollIntoView({behavior:'smooth',block:'start'});
+    if(name && name!=='none') $('mp-feature-panels')?.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  function notify(userEmail,title,message,petId){notifications.unshift({id:uid(),userEmail,title,message,petId,read:false,date:new Date().toISOString()});persistExtra();}
+  function currentEmail(){return currentUser?.email?.toLowerCase()||'';}
+  function ownPet(p){return p.owner===currentEmail();}
+  function getPet(id){return pets.find(p=>String(p.id)===String(id));}
+  function getUserName(){return currentUser?.name||currentEmail();}
+  function addAppNotification(app, title, message){notify(app.owner,title,message,app.petId);}
+
+  window.mpToggleCurrentFavorite=function(){const pet=currentFilteredDeck[activeCardIndex];if(!pet)return alert('Não há animal selecionado.');const key=currentEmail();let row=favorites.find(f=>f.userEmail===key&&String(f.petId)===String(pet.id));if(row)favorites=favorites.filter(f=>f!==row);else favorites.push({userEmail:key,petId:pet.id,date:new Date().toISOString()});persistExtra();alert(row?'Removido dos favoritos.':'Adicionado aos favoritos!');};
+  window.mpToggleFavorite=function(id){const key=currentEmail();const row=favorites.find(f=>f.userEmail===key&&String(f.petId)===String(id));favorites=row?favorites.filter(f=>f!==row):favorites.concat({userEmail:key,petId:id,date:new Date().toISOString()});persistExtra();mpRenderFavorites();};
+  function mpRenderFavorites(){const c=$('mp-favorites-list');if(!c)return;const rows=favorites.filter(f=>f.userEmail===currentEmail()).map(f=>getPet(f.petId)).filter(Boolean);c.innerHTML=rows.length?rows.map(p=>`<div class="mp-pet-row"><img src="${esc(p.img)}" alt=""><div class="flex-1"><b>${esc(p.name)}</b><p class="text-sm text-gray-500">${esc(p.specie)} · ${esc(p.size||'Porte não informado')} · ${esc(p.location)}</p></div><button class="mp-btn" onclick="mpOpenPetDetails('${esc(p.id)}')">Ver</button><button class="mp-btn" onclick="mpToggleFavorite('${esc(p.id)}')">Remover</button></div>`).join(''):'<p class="text-sm text-gray-500">Você ainda não salvou favoritos.</p>';}
+  window.mpOpenPetDetails=function(id){const p=getPet(id);if(!p)return;selectedPetDetailsId=p.id;window.mpCurrentPetDetailId=p.id;const m=$('modal-pet-details');$('modal-pet-img').src=p.img;$('modal-pet-name-age').textContent=`${p.name} · ${p.age}`;$('modal-pet-bio').textContent=`${p.bio||''} | ${p.specie||''} | Porte: ${p.size||'não informado'} | Sexo: ${p.gender||'não informado'} | Saúde: ${p.health||'não informado'} | Local: ${p.location||'não informado'}`;let content=m.querySelector('.p-6');if(content&&!$('mp-detail-actions')){const extra=document.createElement('div');extra.id='mp-detail-actions';extra.className='space-y-2';extra.innerHTML='<button class="mp-btn mp-btn-primary w-full" onclick="mpApplyForAdoption()">Quero adotar este animal</button><button class="mp-btn w-full" onclick="mpToggleFavorite(window.mpCurrentPetDetailId)">☆ Salvar nos favoritos</button><button class="mp-btn w-full" onclick="mpReportPet(window.mpCurrentPetDetailId)">Denunciar anúncio</button><a id="mp-map-link" class="mp-btn block text-center w-full" target="_blank" rel="noopener noreferrer">Ver região no mapa</a>';content.insertBefore(extra,content.querySelector('.flex.gap-3'));}const mapLink=$('mp-map-link');if(mapLink)mapLink.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.location||currentUser?.city||'Brasil');m.classList.remove('hidden');};
+  window.openPetDetailsModal=function(){const p=currentFilteredDeck[activeCardIndex];if(p)mpOpenPetDetails(p.id);else alert('Nenhum animal disponível no momento.');};
+  window.mpApplyForAdoption=function(){const p=getPet(selectedPetDetailsId);if(!p)return;if(!currentUser || currentUser.role!=='adotante')return alert('Entre como adotante para enviar uma candidatura.');if(applications.some(a=>a.adopterEmail===currentEmail()&&String(a.petId)===String(p.id)&&!['rejeitada','cancelada'].includes(a.status)))return alert('Você já tem uma candidatura ativa para este animal.');const terms=confirm('Antes de continuar: você confirma que entende que a adoção exige conversa com a ONG, avaliação responsável e assinatura de termo de adoção?');if(!terms)return;const app={id:uid(),petId:p.id,petName:p.name,adopterEmail:currentEmail(),adopterName:getUserName(),owner:p.owner,status:'pendente',date:new Date().toISOString(),notes:'',history:[{status:'pendente',date:new Date().toISOString()}]};applications.unshift(app);adoptions=adoptions.filter(a=>a.petId!==p.id);persistExtra();addAppNotification(app,'Nova candidatura de adoção',`${getUserName()} demonstrou interesse em ${p.name}.`,p.id);$('modal-pet-details').classList.add('hidden');alert('Candidatura enviada! Você pode acompanhar o andamento em “Minhas candidaturas”.');return false;};
+  window.mpReportPet=function(id){selectedPetDetailsId=id;mpShowPanel('report');};
+  function mpRenderApplications(){const c=$('mp-applications-list');if(!c)return;const rows=applications.filter(a=>a.adopterEmail===currentEmail());c.innerHTML=rows.length?rows.map(a=>`<div class="mp-pet-row"><div class="flex-1"><b>${esc(a.petName)}</b><p class="text-sm text-gray-500">Enviada em ${new Date(a.date).toLocaleDateString('pt-BR')}</p><span class="mp-tag">${esc(a.status)}</span></div>${['pendente','em_analise'].includes(a.status)?`<button class="mp-btn" onclick="mpCancelApplication('${esc(a.id)}')">Cancelar</button>`:''}</div>`).join(''):'<p class="text-sm text-gray-500">Você ainda não enviou candidaturas.</p>';const f=$('mp-followups-list');if(f){const mine=adoptions.filter(a=>a.adopterEmail===currentEmail());f.innerHTML=mine.length?mine.map(a=>`<div class="mp-pet-row"><div class="flex-1"><b>${esc(a.petName)}</b><p class="text-sm text-gray-500">Acompanhamento previsto: ${new Date(a.followUpDue).toLocaleDateString('pt-BR')}</p><span class="mp-tag">${a.followUpDone?'Acompanhamento registrado':'Aguardando acompanhamento'}</span></div>${a.followUpDone?'':`<button class="mp-btn mp-btn-primary" onclick="mpCompleteFollowUp('${esc(a.id)}')">Registrar acompanhamento</button>`}</div>`).join(''):'<p class="text-sm text-gray-500">Após uma adoção concluída, o acompanhamento aparecerá aqui.</p>';}}
+  window.mpCompleteFollowUp=function(id){const a=adoptions.find(x=>x.id===id&&x.adopterEmail===currentEmail());if(!a)return;a.followUpDone=true;a.followUpCompletedAt=new Date().toISOString();persistExtra();mpRenderApplications();alert('Acompanhamento registrado.');};
+  window.mpCancelApplication=function(id){if(!confirm('Cancelar esta candidatura?'))return;const a=applications.find(x=>x.id===id&&x.adopterEmail===currentEmail());if(!a)return;a.status='cancelada';a.history.push({status:'cancelada',date:new Date().toISOString()});persistExtra();mpRenderApplications();};
+  function mpRenderAdminApplications(){const c=$('mp-admin-apps-list');if(!c)return;const mine=applications.filter(a=>{const p=getPet(a.petId);return p&&ownPet(p)||a.owner===currentEmail();});c.innerHTML=mine.length?mine.map(a=>`<div class="mp-pet-row"><div class="flex-1"><b>${esc(a.petName)}</b><p class="text-sm text-gray-500">Interessado: ${esc(a.adopterName)} (${esc(a.adopterEmail)})</p><span class="mp-tag">${esc(a.status)}</span></div><select id="mp-status-${esc(a.id)}" class="mp-field" style="max-width:160px"><option value="pendente">Pendente</option><option value="em_analise">Em análise</option><option value="entrevista">Entrevista</option><option value="aprovada">Aprovada</option><option value="adotado">Adoção concluída</option><option value="rejeitada">Rejeitada</option></select><button class="mp-btn mp-btn-primary" onclick="mpUpdateApplication('${esc(a.id)}')">Atualizar</button></div>`).join(''):'<p class="text-sm text-gray-500">Ainda não há candidaturas para seus anúncios.</p>';mine.forEach(a=>{const el=$('mp-status-'+a.id);if(el)el.value=a.status;});}
+  window.mpUpdateApplication=function(id){const a=applications.find(x=>x.id===id);if(!a)return;const p=getPet(a.petId);if(!p||!ownPet(p))return alert('Você não tem permissão para alterar esta candidatura.');const status=$('mp-status-'+id).value;a.status=status;a.history.push({status,date:new Date().toISOString()});if(status==='aprovada'){p.status='em_processo_de_adocao';}if(status==='adotado'){p.status='adotado';adoptions.unshift({id:uid(),petId:p.id,petName:p.name,adopterEmail:a.adopterEmail,owner:currentEmail(),date:new Date().toISOString(),followUpDue:new Date(Date.now()+7*86400000).toISOString(),followUpDone:false});notify(a.adopterEmail,'Adoção concluída!',`A adoção de ${p.name} foi marcada como concluída. Faça o acompanhamento pós-adoção em cerca de 7 dias.`,p.id);}if(status==='rejeitada')p.status='disponivel';persistExtra();saveData();notify(a.adopterEmail,'Atualização da candidatura',`A candidatura para ${a.petName} foi atualizada: ${status.replaceAll('_',' ')}.`,a.petId);mpRenderAdminApplications();updateOngDashboard();alert('Status atualizado.');};
+  function mpLoadPreferences(){const p=preferences[currentEmail()]||{};['home','size','alone','activity','other','specie'].forEach(k=>{if($('mp-'+k)&&p[k])$('mp-'+k).value=p[k];});mpRenderRecommendations();}
+  function mpRenderRecommendations(){const c=$('mp-recommendations');if(!c)return;const pref=preferences[currentEmail()]||{};const list=pets.filter(p=>p.status==='disponivel').map(p=>{let score=0;if(pref.specie&&pref.specie!=='all'&&p.specie===pref.specie)score+=30;if(pref.size&&pref.size!=='all'&&p.size===pref.size)score+=25;if((p.location||'').toLowerCase().includes((currentUser?.city||'').toLowerCase()))score+=15;if(pref.activity&&p.energy===pref.activity)score+=15;if(pref.other==='sim'&&/convive|soci[aá]vel|outros animais/i.test(p.needs+' '+p.bio))score+=10;if(pref.home==='apartamento'&&p.size==='Pequeno')score+=5;return {...p,score};}).sort((a,b)=>b.score-a.score).slice(0,8);c.innerHTML=list.length?list.map(p=>`<div class="mp-pet-row"><img src="${esc(p.img)}"><div class="flex-1"><b>${esc(p.name)}</b><p class="text-sm text-gray-500">${esc(p.location)} · ${esc(p.size||'Porte não informado')}</p><span class="mp-tag">Compatibilidade sugerida: ${Math.min(100,p.score)}%</span></div><button class="mp-btn" onclick="mpOpenPetDetails('${esc(p.id)}')">Ver pet</button></div>`).join(''):'<p>Nenhum pet disponível para recomendar.</p>';}
+  $('mp-compat-form')?.addEventListener('submit',e=>{e.preventDefault();preferences[currentEmail()]={home:$('mp-home').value,size:$('mp-size').value,alone:$('mp-alone').value,activity:$('mp-activity').value,other:$('mp-other').value,specie:$('mp-specie').value};persistExtra();mpRenderRecommendations();});
+  window.mpApplyAdvancedFilters=function(){activeFilters.size=$('mp-filter-size')?.value||'all';activeFilters.gender=$('mp-filter-gender')?.value||'all';activeFilters.city=($('mp-filter-city')?.value||'').trim().toLowerCase();activeFilters.age=$('mp-filter-age')?.value||'';applyFiltersAndRenderDeck();};
+  window.mpClearAdvancedFilters=function(){['mp-filter-size','mp-filter-gender'].forEach(id=>{if($(id))$(id).value='all';});['mp-filter-city','mp-filter-age'].forEach(id=>{if($(id))$(id).value='';});activeFilters={specie:'all',size:'all',gender:'all',city:'',age:''};applyFiltersAndRenderDeck();};
+  const originalApplyFilters=window.applyFiltersAndRenderDeck;
+  window.applyFiltersAndRenderDeck=function(){let filtered=pets.filter(p=>p.status==='disponivel'&&(!activeFilters.specie||activeFilters.specie==='all'||p.specie===activeFilters.specie)&&(!activeFilters.size||activeFilters.size==='all'||p.size===activeFilters.size)&&(!activeFilters.gender||activeFilters.gender==='all'||String(p.gender||'').toLowerCase().includes(activeFilters.gender.toLowerCase()))&&(!activeFilters.city||(p.location||'').toLowerCase().includes(activeFilters.city))&&(!activeFilters.age||ageYears(p.age)<=Number(activeFilters.age)));const city=(currentUser?.city||'').toLowerCase();currentFilteredDeck=filtered.sort((a,b)=>Number((b.location||'').toLowerCase().includes(city))-Number((a.location||'').toLowerCase().includes(city)));activeCardIndex=Math.min(activeCardIndex,Math.max(0,currentFilteredDeck.length-1));renderDeckCards();};
+  function ageYears(age){const s=String(age||'');const n=parseFloat(s.replace(',','.'));if(!Number.isFinite(n))return 999;if(/m[eê]s/i.test(s))return n/12;if(/dia/i.test(s))return n/365;return n;}
+  const oldHandleAdd=window.handleAddNewPet;
+  window.handleAddNewPet=function(e){e.preventDefault();if(editPetId){const p=getPet(editPetId);if(!p||!ownPet(p))return alert('Anúncio não encontrado ou sem permissão.');Object.assign(p,{name:$('input-pet-name').value.trim(),specie:$('input-pet-specie').value,age:$('input-pet-age').value.trim(),size:$('input-pet-size').value,gender:$('input-pet-gender').value,img:$('input-pet-img').value.trim(),bio:$('input-pet-bio').value.trim(),health:$('mp-pet-health')?.value||'',needs:$('mp-pet-needs')?.value||'',breed:$('mp-pet-breed')?.value||'SRD',energy:$('mp-pet-energy')?.value||'moderado'});editPetId=null;const btn=$('form-add-pet')?.querySelector('button[type=submit]');if(btn)btn.textContent='Publicar Anúncio';}else{const newPet={id:uid(),name:$('input-pet-name').value.trim(),specie:$('input-pet-specie').value,breed:$('mp-pet-breed')?.value||'SRD',age:$('input-pet-age').value.trim(),size:$('input-pet-size').value,gender:$('input-pet-gender').value,location:currentUser.city,img:$('input-pet-img').value.trim(),bio:$('input-pet-bio').value.trim(),health:$('mp-pet-health')?.value||'',needs:$('mp-pet-needs')?.value||'',energy:$('mp-pet-energy')?.value||'moderado',likes:0,status:'disponivel',isDupla:$('input-pet-dupla').checked,owner:currentEmail(),createdAt:new Date().toISOString()};pets.unshift(newPet);}saveData();persistExtra();$('form-add-pet').reset();updateOngDashboard();renderOngManageTable();switchOngTab('manage-pets');};
+  window.mpEditPet=function(id){const p=getPet(id);if(!p||!ownPet(p))return alert('Você não tem permissão para editar este anúncio.');editPetId=p.id;$('input-pet-name').value=p.name;$('input-pet-specie').value=p.specie;$('input-pet-age').value=p.age;$('input-pet-size').value=p.size||'Médio';$('input-pet-gender').value=p.gender||'Macho';$('input-pet-img').value=p.img;$('input-pet-bio').value=p.bio||'';$('mp-pet-health').value=p.health||'';$('mp-pet-needs').value=p.needs||'';$('mp-pet-breed').value=p.breed||'SRD';$('mp-pet-energy').value=p.energy||'moderado';const btn=$('form-add-pet').querySelector('button[type=submit]');btn.textContent='Salvar alterações';switchOngTab('add-pet');};
+  const oldRenderManage=window.renderOngManageTable;
+  window.renderOngManageTable=function(){const tbody=$('ong-manage-table-body');if(!tbody)return;const my=pets.filter(ownPet);tbody.innerHTML=my.length?my.map(p=>`<tr class="border-b"><td class="py-3 px-2"><div class="flex items-center gap-3"><img src="${esc(p.img)}" class="w-12 h-12 rounded-lg object-cover"><div><span class="font-bold block">${esc(p.name)}</span><span class="text-xs text-gray-500">${esc(p.specie)} · ${esc(p.status||'disponivel')}</span></div></div></td><td class="py-3 px-2 text-right whitespace-nowrap"><button class="mp-btn" onclick="mpEditPet('${esc(p.id)}')">Editar</button> <button class="mp-btn" onclick="mpTogglePetStatus('${esc(p.id)}')">${p.status==='disponivel'?'Pausar':'Ativar'}</button> <button class="mp-btn" onclick="deletePet('${esc(p.id)}')">Excluir</button></td></tr>`).join(''):'<tr><td colspan="2" class="p-4 text-center text-gray-400">Você ainda não tem animais cadastrados.</td></tr>';};
+  window.mpTogglePetStatus=function(id){const p=getPet(id);if(!p||!ownPet(p))return;p.status=p.status==='disponivel'?'pausado':'disponivel';saveData();renderOngManageTable();updateOngDashboard();};
+  window.deletePet=function(id){const p=getPet(id);if(!p||!ownPet(p))return alert('Você não tem permissão para excluir este anúncio.');if(confirm('Excluir este anúncio permanentemente?')){pets=pets.filter(x=>String(x.id)!==String(id));favorites=favorites.filter(x=>String(x.petId)!==String(id));saveData();persistExtra();renderOngManageTable();updateOngDashboard();}};
+  const oldDashboard=window.updateOngDashboard;
+  window.updateOngDashboard=function(){const mine=pets.filter(ownPet);$('metric-total-pets').textContent=mine.filter(p=>p.status==='disponivel').length;$('metric-total-matches').textContent=mine.reduce((n,p)=>n+(p.likes||activeMatches.filter(m=>String(m.id)===String(p.id)).length||0),0);$('metric-total-apps').textContent=applications.filter(a=>mine.some(p=>String(p.id)===String(a.petId))&&!['rejeitada','cancelada'].includes(a.status)).length;let dash=$('section-ong-dashboard');if(dash&&!$('mp-dashboard-extra')){const extra=document.createElement('div');extra.id='mp-dashboard-extra';extra.className='grid grid-cols-2 md:grid-cols-3 gap-4';extra.innerHTML='<div class="bg-white p-5 rounded-2xl border"><span class="text-xs font-bold uppercase text-gray-500">Pendentes</span><h3 id="mp-metric-pending" class="text-2xl font-black">0</h3></div><div class="bg-white p-5 rounded-2xl border"><span class="text-xs font-bold uppercase text-gray-500">Aprovadas</span><h3 id="mp-metric-approved" class="text-2xl font-black">0</h3></div><div class="bg-white p-5 rounded-2xl border"><span class="text-xs font-bold uppercase text-gray-500">Adotados</span><h3 id="mp-metric-adopted" class="text-2xl font-black">0</h3></div>';dash.appendChild(extra);}if($('mp-metric-pending'))$('mp-metric-pending').textContent=applications.filter(a=>mine.some(p=>String(p.id)===String(a.petId))&&['pendente','em_analise'].includes(a.status)).length;if($('mp-metric-approved'))$('mp-metric-approved').textContent=applications.filter(a=>mine.some(p=>String(p.id)===String(a.petId))&&a.status==='aprovada').length;if($('mp-metric-adopted'))$('mp-metric-adopted').textContent=adoptions.filter(a=>mine.some(p=>String(p.id)===String(a.petId))).length;};
+  $('mp-lost-form')?.addEventListener('submit',e=>{e.preventDefault();lostFound.unshift({id:uid(),type:$('mp-lost-type').value,name:$('mp-lost-name').value.trim(),city:$('mp-lost-city').value.trim(),contact:$('mp-lost-contact').value.trim(),img:$('mp-lost-img').value.trim(),description:$('mp-lost-desc').value.trim(),userEmail:currentEmail(),date:new Date().toISOString(),status:'ativo'});persistExtra();e.target.reset();mpRenderLost();alert('Aviso publicado neste navegador.');});
+  function mpRenderLost(){const c=$('mp-lost-list');if(!c)return;c.innerHTML=lostFound.filter(x=>x.status==='ativo').map(x=>`<div class="mp-pet-row">${x.img?`<img src="${esc(x.img)}">`:''}<div class="flex-1"><span class="mp-tag">${esc(x.type)}</span><b class="block mt-1">${esc(x.name)}</b><p class="text-sm text-gray-500">${esc(x.city)} · ${esc(x.description)}</p><p class="text-xs text-gray-500">Contato: ${esc(x.contact)}</p></div>${x.userEmail===currentEmail()?`<button class="mp-btn" onclick="mpResolveLost('${esc(x.id)}')">Encerrar</button>`:''}</div>`).join('')||'<p class="text-sm text-gray-500">Nenhum aviso publicado.</p>';}
+  window.mpResolveLost=function(id){const x=lostFound.find(x=>x.id===id&&x.userEmail===currentEmail());if(x)x.status='resolvido';persistExtra();mpRenderLost();};
+  $('mp-campaign-form')?.addEventListener('submit',e=>{e.preventDefault();if(!['ong','empresa'].includes(currentUser.role))return alert('Apenas ONGs e empresas podem criar campanhas.');campaigns.unshift({id:uid(),name:$('mp-campaign-name').value.trim(),goal:$('mp-campaign-goal').value.trim(),target:Number($('mp-campaign-target').value)||0,owner:currentEmail(),ownerName:getUserName(),date:new Date().toISOString(),status:'ativa'});persistExtra();e.target.reset();mpRenderCampaigns();});
+  function mpRenderCampaigns(){const c=$('mp-campaign-list');if(!c)return;c.innerHTML=campaigns.length?campaigns.map(x=>`<div class="mp-pet-row"><div class="flex-1"><b>${esc(x.name)}</b><p class="text-sm text-gray-500">${esc(x.goal)}</p><p class="text-xs text-gray-400">Publicado por ${esc(x.ownerName)}${x.target?` · Meta: R$ ${x.target.toLocaleString('pt-BR',{minimumFractionDigits:2})}`:''}</p></div><button class="mp-btn" onclick="mpShareCampaign('${esc(x.id)}')">Compartilhar</button></div>`).join(''):'<p class="text-sm text-gray-500">Ainda não há campanhas. ONGs e empresas podem cadastrar uma.</p>';}
+  window.mpShareCampaign=function(id){const x=campaigns.find(c=>c.id===id);if(x&&navigator.share)navigator.share({title:x.name,text:x.goal}).catch(()=>{});else if(x){navigator.clipboard?.writeText(x.name+' — '+x.goal);alert('Resumo da campanha copiado, se o navegador permitir.');}};
+  $('mp-report-form')?.addEventListener('submit',e=>{e.preventDefault();reports.unshift({id:uid(),petId:selectedPetDetailsId,reason:$('mp-report-reason').value,details:$('mp-report-details').value.trim(),userEmail:currentEmail(),date:new Date().toISOString(),status:'recebida'});persistExtra();e.target.reset();mpShowPanel('none');alert('Denúncia registrada neste navegador. Em produção, envie para um serviço seguro de moderação.');});
+  function mpRenderNotifications(){const c=$('mp-notifications-list');if(!c)return;const rows=notifications.filter(n=>n.userEmail===currentEmail());c.innerHTML=rows.length?rows.map(n=>`<div class="mp-pet-row"><div class="flex-1"><b>${esc(n.title)}</b><p class="text-sm text-gray-500">${esc(n.message)}</p><p class="text-xs text-gray-400">${new Date(n.date).toLocaleString('pt-BR')}</p></div>${n.read?'':'<span class="mp-tag">Nova</span>'}</div>`).join(''):'<p class="text-sm text-gray-500">Você não tem notificações.</p>';const count=rows.filter(n=>!n.read).length;if($('mp-notification-count'))$('mp-notification-count').textContent=count?`(${count})`:'';}
+  window.mpMarkNotificationsRead=function(){notifications.filter(n=>n.userEmail===currentEmail()).forEach(n=>n.read=true);persistExtra();mpRenderNotifications();};
+  const oldSend=window.handleSendChatMessage;
+  window.handleSendChatMessage=function(e){e.preventDefault();const input=$('chat-input-text');const text=input.value.trim();if(!text||!activeChatPetId)return;const pet=getPet(activeChatPetId);if(!chatMessages[activeChatPetId])chatMessages[activeChatPetId]=[];chatMessages[activeChatPetId].push({sender:'user',text,date:new Date().toISOString(),userEmail:currentEmail()});input.value='';saveData();renderChatMessages();if(pet?.owner)notify(pet.owner,'Nova mensagem sobre adoção',`${getUserName()} enviou uma mensagem sobre ${pet.name}.`,pet.id);};
+  window.renderChatMessages=function(){const c=$('chat-messages-container');if(!c)return;c.innerHTML='';(chatMessages[activeChatPetId]||[]).forEach(m=>{const own=m.userEmail?m.userEmail===currentEmail():m.sender==='user';const row=document.createElement('div');row.className='flex '+(own?'justify-end':'justify-start');const bubble=document.createElement('div');bubble.className=(own?'bg-rose-500 text-white':'bg-white border text-gray-700')+' max-w-[80%] px-4 py-2 rounded-xl text-sm';bubble.textContent=m.text;row.appendChild(bubble);c.appendChild(row);});c.scrollTop=c.scrollHeight;};
+  // Perfil personalizável, adicionado sem alterar dados de pets, candidaturas ou recursos existentes.
+  const MP_DEFAULT_AVATAR='data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="50" fill="#ffe4e6"/><circle cx="50" cy="37" r="18" fill="#fb7185"/><path d="M17 92c2-21 15-32 33-32s31 11 33 32" fill="#fb7185"/></svg>');
+  function mpAvatar(){return currentUser?.photo||MP_DEFAULT_AVATAR;}
+  function mpRefreshProfileHeader(){if(!currentUser)return;const img=$('mp-header-avatar');if(img)img.src=mpAvatar();const label=$('mp-header-name');if(label)label.textContent=currentUser.displayName||currentUser.name||'Meu perfil';}
+  window.mpLoadProfile=function(){if(!currentUser)return;const name=$('mp-profile-name');const city=$('mp-profile-city');const email=$('mp-profile-email');const preview=$('mp-profile-preview');if(name)name.value=currentUser.displayName||currentUser.name||'';if(city)city.value=currentUser.city||'';if(email)email.textContent=currentUser.email||'';if(preview)preview.src=mpAvatar();if($('mp-photo-status'))$('mp-photo-status').textContent=currentUser.photo?'Foto de perfil salva.':'Nenhuma foto escolhida.';mpRefreshProfileHeader();};
+  window.mpRemoveProfilePhoto=function(){if(!currentUser)return;currentUser.photo='';localStorage.setItem('mp_user_v5',JSON.stringify(currentUser));const u=users.find(x=>x.email===currentEmail());if(u)u.photo='';persistExtra();mpLoadProfile();};
+  function bindProfileForms(){
+  const mpProfilePhotoInput=$('mp-profile-photo');
+  if(mpProfilePhotoInput&&!mpProfilePhotoInput.dataset.bound){mpProfilePhotoInput.dataset.bound='1';mpProfilePhotoInput.addEventListener('change',()=>{const file=mpProfilePhotoInput.files?.[0];if(!file)return;if(!file.type.startsWith('image/'))return alert('Escolha um arquivo de imagem.');if(file.size>8*1024*1024)return alert('A imagem deve ter até 8 MB.');const reader=new FileReader();reader.onload=()=>{const image=new Image();image.onload=()=>{const max=420;const scale=Math.min(1,max/Math.max(image.width,image.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);const data=canvas.toDataURL('image/jpeg',0.78);const preview=$('mp-profile-preview');if(preview)preview.src=data;if($('mp-photo-status'))$('mp-photo-status').textContent='Foto selecionada. Clique em “Salvar perfil” para guardar.';window.mpPendingProfilePhoto=data;};image.onerror=()=>alert('Não foi possível abrir esta imagem.');image.src=reader.result;};reader.readAsDataURL(file);});}
+  const mpProfileForm=$('mp-profile-form');
+  if(mpProfileForm&&!mpProfileForm.dataset.bound){mpProfileForm.dataset.bound='1';mpProfileForm.addEventListener('submit',e=>{e.preventDefault();if(!currentUser)return;const displayName=$('mp-profile-name').value.trim();const city=$('mp-profile-city').value.trim();if(!displayName||!city)return alert('Preencha seu nome de exibição e sua cidade.');currentUser.displayName=displayName;currentUser.name=displayName;currentUser.city=city;if(window.mpPendingProfilePhoto){currentUser.photo=window.mpPendingProfilePhoto;window.mpPendingProfilePhoto=null;}localStorage.setItem('mp_user_v5',JSON.stringify(currentUser));const u=users.find(x=>x.email===currentEmail());if(u){u.displayName=displayName;u.name=displayName;u.city=city;if(currentUser.photo)u.photo=currentUser.photo;else if(u.photo&&!currentUser.photo)u.photo='';persistExtra();}const cityDisplay=$('header-city-display');if(cityDisplay)cityDisplay.textContent='📍 '+city;mpRefreshProfileHeader();mpLoadProfile();alert('Perfil atualizado! Os demais dados do Match Pet foram preservados.');});}
+  }
+
+  const oldRegister=window.handleRegister;
+  window.handleRegister=async function(e){e.preventDefault();const role=$('reg-role').value;let finalName='';if(role==='adotante'){const cpf=$('reg-cpf').value;if(cpf.trim() && !validarCPF(cpf))return alert('CPF inválido. Para este modo de teste, você também pode deixar o campo em branco.');const dateValue=$('reg-nascimento').value;if(!dateValue)return alert('Informe sua data de nascimento.');const birth=new Date(dateValue+'T00:00:00');const today=new Date();let age=today.getFullYear()-birth.getFullYear();if(today.getMonth()<birth.getMonth()||(today.getMonth()===birth.getMonth()&&today.getDate()<birth.getDate()))age--;if(Number.isNaN(birth.getTime())||birth>today)return alert('Informe uma data de nascimento válida.');if(age<18)return alert('O cadastro de adotantes exige idade mínima de 18 anos.');finalName=$('reg-nome-pf').value.trim();}else{if($('reg-cnpj').value.trim() && !validarCNPJ($('reg-cnpj').value))return alert('CNPJ inválido. Para este modo de teste, você também pode deixar o campo em branco.');finalName=$('reg-nome-pj').value.trim();}
+    const email=$('reg-email').value.trim().toLowerCase();if(users.some(u=>u.email===email))return alert('Já existe uma conta neste navegador com esse e-mail.');const password=$('reg-senha').value;if(password.length<8)return alert('Use uma senha com pelo menos 8 caracteres.');let passwordHash='local-demo-'+btoa(unescape(encodeURIComponent(password)));try{const bytes=new TextEncoder().encode(password);const digest=await crypto.subtle.digest('SHA-256',bytes);passwordHash=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');}catch(e){/* fallback apenas para demonstração local; não usar em produção */}
+    const user={id:uid(),name:finalName,email,city:$('reg-city').value.trim(),role,cpf:role==='adotante'?$('reg-cpf').value:'',cnpj:role!=='adotante'?$('reg-cnpj').value:'',passwordHash,createdAt:new Date().toISOString()};users.push(user);currentUser={id:user.id,name:user.name,email:user.email,city:user.city,role:user.role};localStorage.setItem('mp_user_v5',JSON.stringify(currentUser));persistExtra();initApp();};
+  window.handleLogin=async function(e){e.preventDefault();const email=$('login-email').value.trim().toLowerCase();const password=$('login-password')?.value||document.querySelector('#form-login input[type=password]')?.value||'';const user=users.find(u=>u.email===email);if(!user){return alert('Conta não encontrada neste navegador. Crie uma conta na aba “Criar Conta”.');}let hash='local-demo-'+btoa(unescape(encodeURIComponent(password)));try{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(password));hash=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,'0')).join('');}catch{}if(hash!==user.passwordHash)return alert('E-mail ou senha incorretos.');currentUser={id:user.id,name:user.name,email:user.email,city:user.city,role:user.role};localStorage.setItem('mp_user_v5',JSON.stringify(currentUser));initApp();};
+  // Add password field id without changing the original form or Receita fields.
+  const loginPassword=document.querySelector('#form-login input[type=password]');if(loginPassword)loginPassword.id='login-password';
+  const oldInit=window.initApp;
+  window.initApp=function(){ensureFeatureUI();bindProfileForms();if(currentUser&&currentUser.displayName)currentUser.name=currentUser.displayName;oldInit();mpRefreshProfileHeader();mpRenderNotifications();if(currentUser?.role==='ong'||currentUser?.role==='empresa')updateOngDashboard();};
+  const oldSetFilter=window.setFilter;
+  window.setFilter=function(type,val,btn){activeFilters[type]=val;applyFiltersAndRenderDeck();};
+  const oldRenderDeck=window.renderDeckCards;
+  window.renderDeckCards=function(){oldRenderDeck();const p=currentFilteredDeck[activeCardIndex];const fav=$('mp-fav-current');if(fav)fav.style.color=p&&favorites.some(f=>f.userEmail===currentEmail()&&String(f.petId)===String(p.id))?'#f59e0b':'#d1d5db';};
+  function bindFeatureForms(){
+    const compat=$('mp-compat-form'); if(compat&&!compat.dataset.bound){compat.dataset.bound='1';compat.addEventListener('submit',e=>{e.preventDefault();preferences[currentEmail()]={home:$('mp-home').value,size:$('mp-size').value,alone:$('mp-alone').value,activity:$('mp-activity').value,other:$('mp-other').value,specie:$('mp-specie').value};persistExtra();mpRenderRecommendations();});}
+    const lost=$('mp-lost-form'); if(lost&&!lost.dataset.bound){lost.dataset.bound='1';lost.addEventListener('submit',e=>{e.preventDefault();lostFound.unshift({id:uid(),type:$('mp-lost-type').value,name:$('mp-lost-name').value.trim(),city:$('mp-lost-city').value.trim(),contact:$('mp-lost-contact').value.trim(),img:$('mp-lost-img').value.trim(),description:$('mp-lost-desc').value.trim(),userEmail:currentEmail(),date:new Date().toISOString(),status:'ativo'});persistExtra();e.target.reset();mpRenderLost();alert('Aviso publicado neste navegador.');});}
+    const campaign=$('mp-campaign-form'); if(campaign&&!campaign.dataset.bound){campaign.dataset.bound='1';campaign.addEventListener('submit',e=>{e.preventDefault();if(!['ong','empresa'].includes(currentUser.role))return alert('Apenas ONGs e empresas podem criar campanhas.');campaigns.unshift({id:uid(),name:$('mp-campaign-name').value.trim(),goal:$('mp-campaign-goal').value.trim(),target:Number($('mp-campaign-target').value)||0,owner:currentEmail(),ownerName:getUserName(),date:new Date().toISOString(),status:'ativa'});persistExtra();e.target.reset();mpRenderCampaigns();});}
+    const report=$('mp-report-form'); if(report&&!report.dataset.bound){report.dataset.bound='1';report.addEventListener('submit',e=>{e.preventDefault();reports.unshift({id:uid(),petId:selectedPetDetailsId,reason:$('mp-report-reason').value,details:$('mp-report-details').value.trim(),userEmail:currentEmail(),date:new Date().toISOString(),status:'recebida'});persistExtra();e.target.reset();mpShowPanel('none');alert('Denúncia registrada neste navegador. Em produção, envie para um serviço seguro de moderação.');});}
+  }
+  // Onboarding after DOM is ready; keep the original login state behavior.
+  function boot(){addStyles();ensureFeatureUI();bindFeatureForms();bindProfileForms();if(currentUser){window.initApp();mpLoadProfile();}const form=$('form-add-pet');if(form&&!form.dataset.mpEnhanced){form.dataset.mpEnhanced='1';}}
+  document.addEventListener('DOMContentLoaded',boot);
+  // If script loads after DOMContentLoaded, boot now as well.
+  if(document.readyState!=='loading')boot();
+  persistExtra();
+})();
+
+</script>
+<script>
+/* Match Pet v3: adoção dupla detalhada, feed ampliado, analytics financeiro e persistência IndexedDB local. */
+(function(){
+  const $ = id => document.getElementById(id);
+  const readJSON=(k,fallback)=>{try{return JSON.parse(localStorage.getItem(k))??fallback}catch{return fallback}};
+  const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const uid=()=> (crypto&&crypto.randomUUID)?crypto.randomUUID():`mp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  let finance=readJSON('mp_finance_v1',[]);
+  let feedSearch='', onlyDuos=false, sortMode='local';
+  let db=null;
+  function openDB(){return new Promise(resolve=>{if(!('indexedDB' in window))return resolve(null);let req=indexedDB.open('MatchPetAdvancedDB',1);req.onupgradeneeded=()=>{const d=req.result;['finance','duoProfiles','snapshots'].forEach(s=>{if(!d.objectStoreNames.contains(s))d.createObjectStore(s,{keyPath:'id'});});};req.onsuccess=()=>{db=req.result;resolve(db)};req.onerror=()=>resolve(null);});}
+  function dbPut(store,record){try{if(!db)return;const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(record);}catch(e){}}
+  function persistFinance(){localStorage.setItem('mp_finance_v1',JSON.stringify(finance));finance.forEach(x=>dbPut('finance',x));renderFinance();}
+  function saveSnapshot(){const snapshot={id:'latest',createdAt:new Date().toISOString(),pets:pets||[],matches:activeMatches||[],finance,duoProfiles:(pets||[]).filter(p=>p.isDupla).map(p=>({id:p.id,duo:p.duo||{}})),applications:readJSON('mp_apps_v6',[]),users:readJSON('mp_users_v6',[])};localStorage.setItem('mp_last_snapshot_v1',JSON.stringify(snapshot));dbPut('snapshots',snapshot);}
+  function addStyles(){if($('mp-v3-styles'))return;const st=document.createElement('style');st.id='mp-v3-styles';st.textContent=`.mp-v3-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px;box-shadow:0 2px 8px #00000008}.mp-v3-stat{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:16px}.mp-v3-stat small{display:block;color:#6b7280;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}.mp-v3-stat strong{display:block;font-size:24px;font-weight:900;margin-top:5px}.mp-v3-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.mp-v3-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}.mp-v3-duo{margin:10px 14px 0;padding:10px 12px;background:#faf5ff;color:#6b21a8;border:1px solid #e9d5ff;border-radius:12px;font-size:12px;line-height:1.45}.mp-v3-feed-tools{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;margin-bottom:12px}.mp-v3-feed-tools input,.mp-v3-feed-tools select{min-width:0;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:white;font-size:12px}@media(max-width:520px){.mp-v3-feed-tools{grid-template-columns:1fr 1fr}.mp-v3-feed-tools input{grid-column:1/-1}}`;document.head.appendChild(st);}
+  function addDoubleFields(){const form=$('form-add-pet');if(!form||$('mp-duo-fields'))return;const checkbox=$('input-pet-dupla');const label=checkbox?.closest('label');if(!label)return;const box=document.createElement('div');box.id='mp-duo-fields';box.className='hidden mp-v3-card space-y-3';box.innerHTML=`<div><h3 class="font-extrabold text-purple-800">Ficha da adoção dupla</h3><p class="text-xs text-gray-500 mt-1">Explique por que os animais devem ser adotados juntos. Essas informações aparecerão no feed.</p></div><div class="mp-v3-form"><label class="text-xs font-bold">Nome do segundo animal<input id="mp-duo-second-name" class="mp-field mt-1" placeholder="Ex.: Loki"></label><label class="text-xs font-bold">Vínculo entre eles<select id="mp-duo-relation" class="mp-field mt-1"><option value="irmaos">São irmãos</option><option value="apegados">Muito apegados — não separar</option><option value="resgatados">Resgatados juntos</option><option value="convivencia">Já convivem há muito tempo</option><option value="outro">Outro vínculo</option></select></label><label class="text-xs font-bold">Nível de dependência<select id="mp-duo-dependency" class="mp-field mt-1"><option value="alto">Alto — separação não recomendada</option><option value="medio">Médio — preferível juntos</option><option value="baixo">Baixo — anúncio conjunto por preferência</option></select></label><label class="text-xs font-bold">Idade do segundo animal<input id="mp-duo-second-age" class="mp-field mt-1" placeholder="Ex.: 3 meses"></label></div><label class="block text-xs font-bold">História e motivo para adoção conjunta<textarea id="mp-duo-story" class="mp-field mt-1" rows="3" maxlength="700" placeholder="Conte como se conheceram, se são irmãos, como reagem quando separados e o que a família precisa saber."></textarea></label><label class="block text-xs font-bold">Orientações para a família<textarea id="mp-duo-guidance" class="mp-field mt-1" rows="2" maxlength="400" placeholder="Ex.: adaptação conjunta, alimentação, rotina, necessidades especiais"></textarea></label><p class="text-xs text-purple-700">Importante: informe apenas o que você observou ou conhece. A ficha não substitui avaliação veterinária ou comportamental.</p>`;label.insertAdjacentElement('afterend',box);checkbox.addEventListener('change',()=>{box.classList.toggle('hidden',!checkbox.checked);$('mp-duo-second-name').required=checkbox.checked;});}
+  function addFeedTools(){const feed=$('section-feed');if(!feed||$('mp-v3-feed-tools'))return;const tools=document.createElement('div');tools.id='mp-v3-feed-tools';tools.className='mp-v3-feed-tools';tools.innerHTML=`<input id="mp-feed-search" type="search" placeholder="Buscar por nome, raça ou cidade…" aria-label="Buscar animais"><button id="mp-feed-duos" class="mp-btn" type="button">🐾 Só adoção dupla</button><select id="mp-feed-sort" aria-label="Ordenar feed"><option value="local">Perto de mim</option><option value="newest">Mais recentes</option><option value="likes">Mais curtidos</option></select>`;feed.insertBefore(tools,feed.children[0]);$('mp-feed-search').addEventListener('input',e=>{feedSearch=e.target.value.trim().toLocaleLowerCase('pt-BR');applyFeedFilters();});$('mp-feed-duos').addEventListener('click',()=>{onlyDuos=!onlyDuos;$('mp-feed-duos').classList.toggle('mp-btn-primary',onlyDuos);$('mp-feed-duos').textContent=onlyDuos?'✓ Mostrando adoção dupla':'🐾 Só adoção dupla';applyFeedFilters();});$('mp-feed-sort').addEventListener('change',e=>{sortMode=e.target.value;applyFeedFilters();});}
+  const baseApply=window.applyFiltersAndRenderDeck;
+  function applyFeedFilters(){if(typeof baseApply==='function')baseApply();let list=(currentFilteredDeck||[]).slice();if(onlyDuos)list=list.filter(p=>p.isDupla);if(feedSearch)list=list.filter(p=>`${p.name} ${p.breed||''} ${p.location||''} ${p.bio||''} ${p.duo?.story||''}`.toLocaleLowerCase('pt-BR').includes(feedSearch));if(sortMode==='newest')list.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));if(sortMode==='likes')list.sort((a,b)=>(b.likes||0)-(a.likes||0));currentFilteredDeck=list;activeCardIndex=0;if(typeof window.renderDeckCards==='function')window.renderDeckCards();}
+  // Override the feed filter pipeline while preserving the existing species/size filters.
+  window.applyFiltersAndRenderDeck=function(){applyFeedFilters();};
+  function decorateCurrentCard(){const deck=$('card-deck');if(!deck)return;const pet=(currentFilteredDeck||[])[activeCardIndex||0];if(!pet||!pet.isDupla)return;const card=$(`pet-card-${pet.id}`);if(!card||card.querySelector('.mp-v3-duo'))return;const d=pet.duo||{};const relationLabels={irmaos:'Irmãos',apegados:'Muito apegados — não separar',resgatados:'Resgatados juntos',convivencia:'Companheiros inseparáveis',outro:'Vínculo especial'};const info=document.createElement('div');info.className='mp-v3-duo';info.innerHTML=`<strong>ADOÇÃO DUPLA · ${safe(relationLabels[d.relation]||'Devem ser adotados juntos')}</strong><div>${safe(d.story||pet.bio||'Dois animais disponíveis em um único anúncio.')}</div>${d.guidance?`<div class="mt-1"><b>Para a família:</b> ${safe(d.guidance)}</div>`:''}`;card.appendChild(info);}
+  const baseRender=window.renderDeckCards;
+  window.renderDeckCards=function(){if(typeof baseRender==='function')baseRender();decorateCurrentCard();const p=(currentFilteredDeck||[])[activeCardIndex||0];const button=$('mp-feed-duos');if(button&&onlyDuos)button.classList.add('mp-btn-primary');};
+  const baseSwipe=window.executeSwipeAction;window.executeSwipeAction=function(act,card,pet){if(act==='like'&&pet){pet.likes=(Number(pet.likes)||0)+1;try{localStorage.setItem('mp_pets_v5',JSON.stringify(pets));}catch(e){}}if(typeof baseSwipe==='function')return baseSwipe(act,card,pet);};
+  const baseAdd=window.handleAddNewPet;
+  window.handleAddNewPet=function(e){const isDuo=$('input-pet-dupla')?.checked;const duo={secondName:$('mp-duo-second-name')?.value.trim()||'',relation:$('mp-duo-relation')?.value||'irmaos',dependency:$('mp-duo-dependency')?.value||'alto',secondAge:$('mp-duo-second-age')?.value.trim()||'',story:$('mp-duo-story')?.value.trim()||'',guidance:$('mp-duo-guidance')?.value.trim()||''};if(isDuo&&!duo.secondName){e.preventDefault();return alert('Informe o nome do segundo animal para cadastrar a adoção dupla.');}if(isDuo&&!duo.story){e.preventDefault();return alert('Explique por que os animais devem ser adotados juntos.');}baseAdd(e);if(isDuo){const p=(pets||[]).find(x=>String(x.id)===String((pets||[])[0]?.id));if(p&&p.owner===currentUser?.email){p.isDupla=true;p.duo=duo;p.name=`${p.name} & ${duo.secondName}`;p.age=duo.secondAge?`${p.age} / ${duo.secondAge}`:p.age;localStorage.setItem('mp_pets_v5',JSON.stringify(pets));dbPut('duoProfiles',{id:String(p.id),...duo,updatedAt:new Date().toISOString()});saveSnapshot();} }if($('mp-duo-fields'))$('mp-duo-fields').classList.add('hidden');};
+  function money(n){return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+  function injectFinanceUI(){const nav=$('mp-extra-nav');if(nav&&!nav.querySelector('[data-mp-tab="finance"]')){const group=document.createElement('div');group.className='mp-nav-group';group.innerHTML='<span class="mp-nav-label">GESTÃO</span><button data-mp-tab="finance" onclick="mpShowPanel(\'finance\')">📊 Estatísticas & Financeiro</button>';nav.appendChild(group);}
+    const panelRoot=$('mp-feature-panels');if(panelRoot&&!$('mp-panel-finance')){const section=document.createElement('section');section.id='mp-panel-finance';section.className='mp-panel hidden';section.innerHTML=`<div class="flex flex-wrap items-start justify-between gap-3 mb-5"><div><h2 class="text-2xl font-black">Central de gestão · Analytics</h2><p class="text-sm text-gray-500 mt-1">Indicadores de adoção, investimento, receitas e despesas da sua organização.</p></div><button class="mp-btn" onclick="mpShowPanel('none')">Voltar</button></div><div class="mp-alert">Modo protótipo: os registros ficam neste navegador. Não é contabilidade oficial e não há integração bancária ou sincronização em nuvem.</div><div id="mp-finance-kpis" class="mp-v3-grid mb-5"></div><div class="mp-v3-card mb-5"><h3 class="font-extrabold mb-3">Lançar movimentação</h3><form id="mp-finance-form" class="mp-v3-form"><label class="text-xs font-bold">Tipo<select id="mp-fin-type" class="mp-field mt-1"><option value="despesa">Despesa</option><option value="investimento">Investimento</option><option value="receita">Receita</option><option value="doacao">Doação recebida</option></select></label><label class="text-xs font-bold">Categoria<select id="mp-fin-category" class="mp-field mt-1"><option>Veterinário</option><option>Alimentação</option><option>Medicamentos</option><option>Transporte</option><option>Marketing</option><option>Infraestrutura</option><option>Resgate</option><option>Doação</option><option>Patrocínio</option><option>Outros</option></select></label><label class="text-xs font-bold">Valor (R$)<input id="mp-fin-amount" type="number" min="0.01" step="0.01" required class="mp-field mt-1"></label><label class="text-xs font-bold">Data<input id="mp-fin-date" type="date" required class="mp-field mt-1"></label><label class="text-xs font-bold">Descrição<input id="mp-fin-desc" required maxlength="180" class="mp-field mt-1" placeholder="Ex.: compra de ração para resgate"></label><label class="text-xs font-bold">Referência / comprovante (opcional)<input id="mp-fin-ref" maxlength="100" class="mp-field mt-1" placeholder="Número interno ou observação"></label><button type="submit" class="mp-btn mp-btn-primary">＋ Registrar movimentação</button></form></div><div class="mp-v3-grid mb-5"><div class="mp-v3-card"><h3 class="font-extrabold mb-3">Fluxo financeiro</h3><canvas id="mp-fin-chart" width="600" height="260" style="width:100%;height:auto"></canvas><p class="text-xs text-gray-400 mt-2">Comparação agregada dos lançamentos registrados neste navegador.</p></div><div class="mp-v3-card"><h3 class="font-extrabold mb-3">Indicadores de impacto</h3><div id="mp-impact-metrics" class="space-y-3"></div></div></div><div class="mp-v3-card mb-5"><div class="flex flex-wrap items-center justify-between gap-3 mb-3"><h3 class="font-extrabold">Movimentações registradas</h3><div class="flex flex-wrap gap-2"><button class="mp-btn" onclick="mpExportFinanceCSV()">Exportar CSV</button><button class="mp-btn" onclick="mpExportFullBackup()">Backup JSON</button><label class="mp-btn cursor-pointer">Restaurar backup<input id="mp-import-backup" type="file" accept="application/json,.json" class="hidden"></label></div></div><div class="overflow-x-auto"><table class="w-full text-sm text-left"><thead><tr class="text-xs text-gray-500 border-b"><th class="py-2 pr-3">Data</th><th class="py-2 pr-3">Tipo</th><th class="py-2 pr-3">Categoria / descrição</th><th class="py-2 pr-3">Valor</th><th class="py-2">Ação</th></tr></thead><tbody id="mp-finance-rows"></tbody></table></div></div><div class="mp-v3-card"><h3 class="font-extrabold mb-3">Indicadores de adoção</h3><div id="mp-adoption-analytics" class="mp-v3-grid"></div></div>`;panelRoot.appendChild(section);}
+    const extra=document.querySelector('#view-ong > div.flex.flex-wrap');if(extra&&!extra.querySelector('[data-mp-open-finance]')){const b=document.createElement('button');b.className='mp-btn';b.dataset.mpOpenFinance='1';b.textContent='📊 Estatísticas & Financeiro';b.onclick=()=>window.mpShowPanel('finance');extra.appendChild(b);}
+    const isOrg=['ong','empresa'].includes(currentUser?.role);const b=nav?.querySelector('[data-mp-tab="finance"]');if(b)b.style.display=isOrg?'':'none';const panel=$('mp-panel-finance');if(panel)panel.style.display=isOrg?'':'none';
+  }
+  function renderFinance(){if(!$('mp-finance-kpis'))return;const mine=finance.filter(x=>x.owner===(currentUser?.email||''));const sum=t=>mine.filter(x=>x.type===t).reduce((a,x)=>a+Number(x.amount||0),0);const expenses=sum('despesa'),investment=sum('investimento'),revenue=sum('receita')+sum('doacao'),net=revenue-expenses-investment;const myPets=(pets||[]).filter(p=>p.owner===(currentUser?.email||''));const myApps=readJSON('mp_apps_v6',[]).filter(a=>a.owner===(currentUser?.email||'')||myPets.some(p=>String(p.id)===String(a.petId)));const approved=myApps.filter(a=>['aprovada','adotado'].includes(a.status)).length;const kpis=[['Receitas + doações',money(revenue),'#047857'],['Despesas',money(expenses),'#b91c1c'],['Investimentos',money(investment),'#6d28d9'],['Saldo operacional',money(net),net>=0?'#047857':'#b91c1c'],['ROI estimado',investment?`${(((revenue-expenses)/investment)*100).toFixed(1)}%`:'—',' #1d4ed8'],['Registros financeiros',mine.length,'#111827']];$('mp-finance-kpis').innerHTML=kpis.map(k=>`<div class="mp-v3-stat"><small>${safe(k[0])}</small><strong style="color:${k[2].trim()}">${safe(k[1])}</strong></div>`).join('');$('mp-impact-metrics').innerHTML=`<div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Pets cadastrados</span><b>${myPets.length}</b></div><div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Matches somados</span><b>${myPets.reduce((a,p)=>a+(p.likes||0),0)}</b></div><div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Candidaturas identificadas</span><b>${myApps.length}</b></div><div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Adoções aprovadas/concluídas</span><b>${approved}</b></div><div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Custo por adoção (estimado)</span><b>${approved?money((expenses+investment)/approved):'—'}</b></div><div class="flex justify-between gap-3"><span class="text-sm text-gray-500">Despesas por pet (estimado)</span><b>${myPets.length?money(expenses/myPets.length):'—'}</b></div>`;$('mp-adoption-analytics').innerHTML=[['Pets ativos',myPets.filter(p=>p.status==='disponivel').length],['Adoção dupla',myPets.filter(p=>p.isDupla).length],['Interesse (likes)',myPets.reduce((a,p)=>a+(p.likes||0),0)],['Conversão para adoção',myApps.length?`${(approved/myApps.length*100).toFixed(1)}%`:'—']].map(k=>`<div class="mp-v3-stat"><small>${safe(k[0])}</small><strong>${safe(k[1])}</strong></div>`).join('');const rows=mine.slice().sort((a,b)=>b.date.localeCompare(a.date));$('mp-finance-rows').innerHTML=rows.length?rows.map(x=>`<tr class="border-b"><td class="py-3 pr-3 whitespace-nowrap">${safe(new Date(x.date+'T00:00:00').toLocaleDateString('pt-BR'))}</td><td class="py-3 pr-3">${safe(x.type)}</td><td class="py-3 pr-3"><b>${safe(x.category)}</b><div class="text-xs text-gray-500">${safe(x.description)} ${x.reference?'· '+safe(x.reference):''}</div></td><td class="py-3 pr-3 whitespace-nowrap">${money(x.amount)}</td><td class="py-3"><button class="mp-btn" onclick="mpDeleteFinance('${safe(x.id)}')">Excluir</button></td></tr>`).join(''):'<tr><td colspan="5" class="py-6 text-center text-gray-400">Nenhuma movimentação registrada.</td></tr>';drawFinanceChart(mine);}
+  function drawFinanceChart(mine){const c=$('mp-fin-chart');if(!c)return;const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);const sums=[['Receitas',mine.filter(x=>['receita','doacao'].includes(x.type)).reduce((a,x)=>a+x.amount,0)],['Despesas',mine.filter(x=>x.type==='despesa').reduce((a,x)=>a+x.amount,0)],['Investimentos',mine.filter(x=>x.type==='investimento').reduce((a,x)=>a+x.amount,0)]];const max=Math.max(1,...sums.map(x=>x[1]));ctx.font='16px sans-serif';sums.forEach((item,i)=>{const y=24+i*78;ctx.fillStyle='#374151';ctx.fillText(item[0]+' · '+money(item[1]),12,y+14);ctx.fillStyle='#f3f4f6';ctx.fillRect(12,y+24,w-24,20);ctx.fillStyle=['#10b981','#f87171','#a78bfa'][i];ctx.fillRect(12,y+24,(w-24)*(item[1]/max),20);});}
+  window.mpDeleteFinance=function(id){if(!confirm('Excluir este lançamento financeiro?'))return;finance=finance.filter(x=>x.id!==id);persistFinance();saveSnapshot();};
+  window.mpExportFinanceCSV=function(){const mine=finance.filter(x=>x.owner===(currentUser?.email||''));const csv=[['data','tipo','categoria','descricao','valor','referencia'],...mine.map(x=>[x.date,x.type,x.category,x.description,x.amount,x.reference||''])].map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');downloadFile('\ufeff'+csv,'match-pet-financeiro.csv','text/csv;charset=utf-8');};
+  window.mpExportFullBackup=function(){const payload={app:'Match Pet',version:3,exportedAt:new Date().toISOString(),localStorageKeys:['mp_user_v5','mp_pets_v5','mp_matches_v5','mp_chats_v5','mp_apps_v5','mp_users_v6','mp_favorites_v6','mp_apps_v6','mp_notifications_v6','mp_lost_v6','mp_reports_v6','mp_campaigns_v6','mp_preferences_v6','mp_adoptions_v6','mp_finance_v1'].reduce((o,k)=>{const v=localStorage.getItem(k);if(v!==null)o[k]=v;return o;},{}),finance};downloadFile(JSON.stringify(payload,null,2),'match-pet-backup.json','application/json');};
+  function downloadFile(content,name,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+  function bindFinance(){const form=$('mp-finance-form');if(form&&!form.dataset.bound){form.dataset.bound='1';$('mp-fin-date').value=new Date().toISOString().slice(0,10);form.addEventListener('submit',e=>{e.preventDefault();if(!['ong','empresa'].includes(currentUser?.role))return alert('Este painel é exclusivo para ONGs e empresas no protótipo.');const amount=Number($('mp-fin-amount').value);if(!Number.isFinite(amount)||amount<=0)return alert('Informe um valor maior que zero.');const row={id:uid(),owner:currentUser.email,type:$('mp-fin-type').value,category:$('mp-fin-category').value,amount,date:$('mp-fin-date').value,description:$('mp-fin-desc').value.trim(),reference:$('mp-fin-ref').value.trim(),createdAt:new Date().toISOString()};finance.push(row);persistFinance();saveSnapshot();form.reset();$('mp-fin-date').value=new Date().toISOString().slice(0,10);alert('Movimentação registrada no banco local do navegador.');});}
+    const imp=$('mp-import-backup');if(imp&&!imp.dataset.bound){imp.dataset.bound='1';imp.addEventListener('change',async()=>{const file=imp.files?.[0];if(!file)return;try{const data=JSON.parse(await file.text());if(data.app!=='Match Pet'||!data.localStorageKeys)throw new Error('Arquivo não reconhecido.');if(!confirm('Restaurar backup? Os dados correspondentes deste navegador serão substituídos pelos dados do arquivo.'))return;Object.entries(data.localStorageKeys).forEach(([k,v])=>localStorage.setItem(k,v));if(Array.isArray(data.finance)){finance=data.finance;localStorage.setItem('mp_finance_v1',JSON.stringify(finance));}alert('Backup restaurado. O site será recarregado.');location.reload();}catch(err){alert('Não foi possível restaurar: '+err.message);}finally{imp.value='';}});}}
+  const baseShow=window.mpShowPanel;window.mpShowPanel=function(name){if(typeof baseShow==='function')baseShow(name);if(name==='finance'){injectFinanceUI();bindFinance();renderFinance();const a=$('view-adotante'),o=$('view-ong');if(a)a.classList.add('hidden');if(o)o.classList.add('hidden');}else if(name==='none'){const a=$('view-adotante'),o=$('view-ong');if(currentUser&&['ong','empresa'].includes(currentUser.role)){if(o)o.classList.remove('hidden');if(a)a.classList.add('hidden');}else if(currentUser){if(a)a.classList.remove('hidden');if(o)o.classList.add('hidden');}}};
+  const baseDashboard=window.updateOngDashboard;window.updateOngDashboard=function(){if(typeof baseDashboard==='function')baseDashboard();injectFinanceUI();renderFinance();};
+  function boot(){addStyles();addDoubleFields();addFeedTools();injectFinanceUI();bindFinance();if($('mp-fin-date')&&!$('mp-fin-date').value)$('mp-fin-date').value=new Date().toISOString().slice(0,10);openDB().then(()=>{saveSnapshot();finance.forEach(x=>dbPut('finance',x));(pets||[]).filter(p=>p.isDupla).forEach(p=>dbPut('duoProfiles',{id:String(p.id),...(p.duo||{}),updatedAt:new Date().toISOString()}));});}
+  // Assistente automático do Match Pet: respostas locais de demonstração, sem API externa.
+  const AI_CHAT_KEY = 'mp_ai_chat_enabled_v1';
+  function mpAIEnabled(){ return localStorage.getItem(AI_CHAT_KEY)!=='false'; }
+  function mpInstallChatAssistantUI(){
+    const area=$('chat-active-area'); if(!area || $('mp-chat-ai-notice')) return;
+    const notice=document.createElement('div'); notice.id='mp-chat-ai-notice';
+    notice.className='px-3 py-2 bg-rose-50 border-b border-rose-100 flex items-center justify-between gap-2';
+    notice.innerHTML='<div class="text-xs text-rose-800"><b>🤖 Assistente automático do Match Pet</b><div>Respostas demonstrativas para dúvidas comuns; não são mensagens da ONG.</div></div><button type="button" id="mp-chat-ai-toggle" class="text-xs font-bold px-3 py-1.5 rounded-full border border-rose-200 bg-white">IA: ligada</button>';
+    const header=area.firstElementChild; if(header) header.insertAdjacentElement('afterend',notice); else area.prepend(notice);
+    const toggle=$('mp-chat-ai-toggle');
+    const update=()=>{const on=mpAIEnabled();toggle.textContent=on?'IA: ligada':'IA: desligada';toggle.setAttribute('aria-pressed',String(on));toggle.classList.toggle('opacity-60',!on);};
+    toggle.addEventListener('click',()=>{localStorage.setItem(AI_CHAT_KEY,mpAIEnabled()?'false':'true');update();}); update();
+    const input=$('chat-input-text'); if(input){input.placeholder='Pergunte sobre adoção, cuidados, adoção dupla...';input.setAttribute('aria-label','Mensagem para o chat');}
+  }
+  function mpAIReply(raw, pet){
+    const q=String(raw||'').toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const name=pet?.name||'este animal';
+    const duo=!!(pet?.isDupla || pet?.duo || / & | e /.test(name));
+    const duoReason=pet?.duo?.reason || pet?.duo?.bond || pet?.duoReason || '';
+    if(/\b(oi|ola|bom dia|boa tarde|boa noite|eai|opa|tudo bem)\b/.test(q)) return `Olá! 🐾 Sou o assistente automático do Match Pet. Posso explicar o processo de adoção, adoção dupla e cuidados. O que você gostaria de saber sobre ${name}?`;
+    if(/(adocao dupla|adocao em dupla|juntos|separar|irmaos|apegad|nao se separ|nao separar)/.test(q)) {
+      if(duo) return `🐶🐶 ${name} está anunciado como adoção dupla. ${duoReason ? 'Informação cadastrada sobre o vínculo: '+duoReason+'. ' : ''}A recomendação é conversar com a ONG para entender a história, o vínculo e se a adoção conjunta é necessária para o bem-estar dos dois. O assistente não substitui a avaliação da equipe responsável.`;
+      return 'A adoção dupla é usada quando dois animais devem ser adotados juntos, por exemplo, irmãos ou companheiros com vínculo forte. A ONG deve explicar o motivo, o histórico e os cuidados necessários no anúncio. Se o anúncio não estiver marcado como dupla, confirme essa informação diretamente com a ONG.';
+    }
+    if(/(como adotar|quero adotar|processo|candidatura|inscricao|solicitar adocao|aplicar)/.test(q)) return `Para demonstrar interesse em ${name}, abra os detalhes do anúncio e clique em “Quero adotar este animal”, se essa opção estiver disponível. Depois, acompanhe a candidatura na aba “Minhas candidaturas”. A ONG pode solicitar uma conversa e avaliar se o lar é adequado antes de confirmar a adoção.`;
+    if(/(vacina|vacinad|vermifug|castrad|saude|doente|medic|veterin)/.test(q)) return `As informações de saúde de ${name} devem ser confirmadas com a ONG ou responsável. Confira vacinação, vermifugação, castração, tratamentos e histórico veterinário antes de concluir a adoção. Se algo não estiver no anúncio, peça os dados e os comprovantes disponíveis.`;
+    if(/(visita|conhecer|buscar|retirar|entrega|onde fica|localizacao|endereco)/.test(q)) return `O anúncio informa a região ${pet?.location||'não informada'}. Para combinar visita, transporte ou retirada de ${name}, fale com a ONG/responsável pelo canal oficial e não compartilhe endereço residencial publicamente.`;
+    if(/(custo|preco|valor|taxa|pagar|pix|doacao|dinheiro)/.test(q)) return 'As regras de taxas e contribuições variam de uma organização para outra. Confirme diretamente com a ONG por um canal verificável, peça explicação sobre qualquer cobrança e não faça pagamentos apenas com base em uma mensagem não confirmada.';
+    if(/(golpe|fraude|confiavel|confianca|denunciar|suspeit)/.test(q)) return 'Para sua segurança, confirme a identidade da ONG, peça informações claras sobre o animal e não envie dinheiro ou documentos sensíveis sem verificar o destinatário. Se suspeitar de um anúncio, use a opção “Denunciar anúncio” e guarde as mensagens relevantes.';
+    if(/(documento|cpf|cnpj|receita federal|contrato|termo)/.test(q)) return 'Os documentos exigidos podem variar conforme a ONG e o processo de adoção. Confirme os requisitos diretamente com a organização e leia o termo de adoção antes de assinar. O modo de teste do site não confirma identidade nem situação cadastral em bases oficiais.';
+    if(/(temperamento|bravo|crianca|crianças|gato|cachorro|outro animal|apartamento|casa|quintal|sozinho)/.test(q)) return `Para avaliar se ${name} combina com sua casa, pergunte à ONG sobre temperamento, convivência com crianças e outros animais, rotina, nível de energia e necessidades especiais. O perfil pode ajudar, mas a compatibilidade deve ser confirmada com quem conhece o animal.`;
+    if(/(obrigad|valeu|ajudou)/.test(q)) return 'Por nada! ❤️ A adoção responsável é feita com calma. Se quiser, pergunte sobre candidatura, adoção dupla, saúde ou segurança.';
+    if(/(humano|atendente|ong|responsavel|pessoa real|falar com)/.test(q)) return `Sou um assistente automático de demonstração e não consigo encaminhar mensagens em tempo real para a ONG. Sua mensagem fica salva neste navegador. Para uma resposta oficial sobre ${name}, use o contato que a organização disponibilizou no anúncio.`;
+    return `Entendi sua dúvida sobre ${name}. 🤖 Ainda estou no modo de demonstração e consigo responder melhor sobre processo de adoção, adoção dupla, saúde, visitas e segurança. Para detalhes específicos que não estejam no anúncio, confirme com a ONG responsável. Esta resposta foi gerada automaticamente e não representa uma confirmação da ONG.`;
+  }
+  window.mpAIEnabled = mpAIEnabled;
+  window.mpAIReply = mpAIReply;
+  window.mpInstallChatAssistantUI = mpInstallChatAssistantUI;
+  window.renderChatMessages=function(){
+    const c=$('chat-messages-container'); if(!c)return; c.textContent='';
+    const rows=(activeChatPetId && chatMessages[activeChatPetId]) || [];
+    rows.forEach(m=>{
+      const own=m.userEmail?m.userEmail===currentEmail():m.sender==='user';
+      const row=document.createElement('div'); row.className='flex '+(own?'justify-end':'justify-start');
+      const wrap=document.createElement('div'); wrap.className='max-w-[85%]';
+      if(m.sender==='assistant'){const label=document.createElement('div');label.className='text-[10px] text-gray-500 mb-1 ml-1';label.textContent='🤖 Assistente automático · modo teste';wrap.appendChild(label);}
+      const bubble=document.createElement('div');bubble.className=(own?'bg-rose-500 text-white':(m.sender==='assistant'?'bg-rose-50 border border-rose-100 text-gray-800':'bg-white border text-gray-700'))+' px-4 py-2 rounded-xl text-sm whitespace-pre-wrap break-words';bubble.textContent=String(m.text||'');wrap.appendChild(bubble);
+      if(m.date){const time=document.createElement('div');time.className='text-[10px] text-gray-400 mt-1 '+(own?'text-right':'');time.textContent=new Date(m.date).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});wrap.appendChild(time);}
+      row.appendChild(wrap);c.appendChild(row);
+    });
+    c.scrollTop=c.scrollHeight; mpInstallChatAssistantUI();
+  };
+  window.handleSendChatMessage=function(e){
+    if(e)e.preventDefault(); const input=$('chat-input-text'); const message=String(input?.value||'').trim();
+    if(!message)return;
+    if(!activeChatPetId){alert('Primeiro, selecione um match na parte superior do chat.');return;}
+    const petId=activeChatPetId; const pet=getPet(petId);
+    if(!chatMessages[petId])chatMessages[petId]=[];
+    chatMessages[petId].push({sender:'user',text:message,date:new Date().toISOString(),userEmail:currentEmail()});
+    input.value=''; saveData(); renderChatMessages();
+    if(pet?.owner && pet.owner!==currentEmail()) { try { notify(pet.owner,'Nova mensagem sobre adoção',`${getUserName()} enviou uma mensagem sobre ${pet.name}.`,pet.id); } catch(err){} }
+    if(mpAIEnabled()){
+      const reply=mpAIReply(message,pet);
+      const sendReply=()=>{
+        if(!chatMessages[petId])chatMessages[petId]=[];
+        chatMessages[petId].push({sender:'assistant',text:reply,date:new Date().toISOString(),isAI:true});
+        saveData(); if(String(activeChatPetId)===String(petId))renderChatMessages();
+      };
+      window.setTimeout(sendReply,650);
+    }
+  };
+  const oldSelectChatPet=window.selectChatPet;
+  window.selectChatPet=function(id){if(typeof oldSelectChatPet==='function')oldSelectChatPet(id);mpInstallChatAssistantUI();};
+  document.addEventListener('DOMContentLoaded',()=>{mpInstallChatAssistantUI();});
+  document.addEventListener('DOMContentLoaded',boot);if(document.readyState!=='loading')boot();
+})();
+</script>
+
+
+<script>
+/* Match Pet — correção robusta do chat e camada visual uniforme */
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const normalizeId = (v) => String(v ?? "");
+  const getPetSafe = (id) => (Array.isArray(pets) ? pets.find(p => normalizeId(p.id) === normalizeId(id)) : null);
+  const saveChatSafe = () => {
+    try {
+      if (typeof saveData === "function") saveData();
+      else {
+        localStorage.setItem("mp_chats_v5", JSON.stringify(chatMessages || {}));
+        localStorage.setItem("mp_matches_v5", JSON.stringify(activeMatches || []));
+      }
+      return true;
+    } catch (err) {
+      console.error("Falha ao salvar conversa:", err);
+      return false;
+    }
+  };
+  const ensureChat = (id) => {
+    const key = normalizeId(id);
+    if (!chatMessages[key]) chatMessages[key] = [];
+    return chatMessages[key];
+  };
+
+  function addChatStatus(message, isError) {
+    let status = $("mp-chat-status");
+    const form = $("chat-form");
+    if (!status && form) {
+      status = document.createElement("p");
+      status.id = "mp-chat-status";
+      status.className = "text-xs px-2 pt-2";
+      form.parentElement.appendChild(status);
+    }
+    if (status) {
+      status.textContent = message || "";
+      status.style.color = isError ? "#b91c1c" : "#64748b";
+    }
+  }
+
+  function installChatStartButton() {
+    const placeholder = $("chat-placeholder");
+    if (!placeholder || $("mp-start-demo-chat")) return;
+    const button = document.createElement("button");
+    button.id = "mp-start-demo-chat";
+    button.type = "button";
+    button.className = "mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white shadow-sm";
+    button.style.background = "#e11d48";
+    button.innerHTML = '<i class="fa-solid fa-robot"></i> Testar conversa com o assistente';
+    button.addEventListener("click", () => {
+      const firstPet = (Array.isArray(pets) ? pets : []).find(p => p && p.status !== "adotado") || (pets || [])[0];
+      if (!firstPet) {
+        addChatStatus("Ainda não há animais cadastrados para iniciar uma conversa.", true);
+        return;
+      }
+      window.selectChatPet(firstPet.id, { demo: true });
+      addChatStatus("Conversa de demonstração iniciada. As respostas são automáticas e ficam salvas neste navegador.", false);
+    });
+    placeholder.appendChild(button);
+    const note = document.createElement("p");
+    note.className = "mt-2 text-xs";
+    note.style.color = "#64748b";
+    note.textContent = "Para conversar sobre um match, selecione um animal na faixa acima. O botão inicia um teste local.";
+    placeholder.appendChild(note);
+  }
+
+  window.selectChatPet = function (id, options = {}) {
+    const pet = getPetSafe(id);
+    if (!pet) {
+      addChatStatus("Não foi possível abrir esta conversa: o anúncio não foi encontrado.", true);
+      return;
+    }
+    activeChatPetId = pet.id;
+    ensureChat(pet.id);
+    const placeholder = $("chat-placeholder");
+    const area = $("chat-active-area");
+    if (placeholder) placeholder.classList.add("hidden");
+    if (area) area.classList.remove("hidden");
+    const image = $("chat-pet-img");
+    const name = $("chat-pet-name");
+    const ong = $("chat-ong-name");
+    if (image) image.src = pet.img || "";
+    if (name) name.textContent = pet.name || "Animal";
+    if (ong) ong.textContent = options.demo ? "Conversa de demonstração · Match Pet" : (pet.ownerName || "ONG / responsável pelo anúncio");
+    const input = $("chat-input-text");
+    if (input) {
+      input.disabled = false;
+      input.placeholder = "Digite sua mensagem...";
+    }
+    if (typeof window.renderChatMessages === "function") window.renderChatMessages();
+    if (input) setTimeout(() => input.focus(), 50);
+  };
+
+  window.renderMatchesList = function () {
+    const cont = $("matches-horizontal-list");
+    if (!cont) return;
+    cont.textContent = "";
+    const entries = Array.isArray(activeMatches) ? activeMatches : [];
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.className = "text-xs px-2 py-3";
+      empty.style.color = "#64748b";
+      empty.textContent = "Você ainda não tem matches. Use o botão de teste abaixo para experimentar o assistente.";
+      cont.appendChild(empty);
+      installChatStartButton();
+      return;
+    }
+    entries.forEach(match => {
+      const pet = getPetSafe(match.id ?? match);
+      if (!pet) return;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "flex items-center gap-2 rounded-xl px-2 py-2 border text-left shrink-0";
+      button.style.borderColor = "#e2e8f0";
+      button.style.background = "#fff";
+      button.innerHTML = `<img src="${String(pet.img || "").replace(/"/g, "&quot;")}" alt="" class="w-10 h-10 rounded-full object-cover"><span class="text-xs font-bold"></span>`;
+      button.querySelector("span").textContent = pet.name || "Animal";
+      button.addEventListener("click", () => window.selectChatPet(pet.id));
+      cont.appendChild(button);
+    });
+  };
+
+  window.renderChatMessages = function () {
+    const container = $("chat-messages-container");
+    if (!container) return;
+    container.textContent = "";
+    const rows = (activeChatPetId != null && chatMessages[normalizeId(activeChatPetId)]) || [];
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "text-center text-xs py-6";
+      empty.style.color = "#64748b";
+      empty.textContent = "Conversa iniciada. Envie uma mensagem para começar. 🐾";
+      container.appendChild(empty);
+    }
+    rows.forEach(message => {
+      const own = message.userEmail
+        ? message.userEmail === (typeof currentEmail === "function" ? currentEmail() : "")
+        : message.sender === "user";
+      const row = document.createElement("div");
+      row.className = "flex " + (own ? "justify-end" : "justify-start");
+      const wrap = document.createElement("div");
+      wrap.className = "max-w-[88%]";
+      if (message.sender === "assistant") {
+        const label = document.createElement("div");
+        label.className = "text-[10px] mb-1 ml-1";
+        label.style.color = "#64748b";
+        label.textContent = "🤖 Assistente automático · demonstração";
+        wrap.appendChild(label);
+      }
+      const bubble = document.createElement("div");
+      bubble.className = "px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap break-words shadow-sm";
+      bubble.style.background = own ? "#e11d48" : (message.sender === "assistant" ? "#fff1f2" : "#ffffff");
+      bubble.style.color = own ? "#ffffff" : "#1f2937";
+      bubble.style.border = own ? "1px solid #e11d48" : "1px solid #e2e8f0";
+      bubble.textContent = String(message.text || "");
+      wrap.appendChild(bubble);
+      if (message.date) {
+        const time = document.createElement("div");
+        time.className = "text-[10px] mt-1 " + (own ? "text-right" : "");
+        time.style.color = "#94a3b8";
+        const d = new Date(message.date);
+        time.textContent = Number.isNaN(d.getTime()) ? "" : d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+        wrap.appendChild(time);
+      }
+      row.appendChild(wrap);
+      container.appendChild(row);
+    });
+    container.scrollTop = container.scrollHeight;
+    if (typeof window.mpInstallChatAssistantUI === "function") window.mpInstallChatAssistantUI();
+  };
+
+  window.handleSendChatMessage = function (event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const input = $("chat-input-text");
+    const message = String(input?.value || "").trim();
+    if (!message) {
+      addChatStatus("Digite uma mensagem antes de enviar.", true);
+      input?.focus();
+      return false;
+    }
+
+    // Se ainda não houver match/conversa selecionada, inicia uma conversa de teste
+    // com o primeiro anúncio disponível, sem criar um match falso.
+    if (activeChatPetId == null) {
+      const firstPet = (Array.isArray(pets) ? pets : []).find(p => p && p.status !== "adotado") || (pets || [])[0];
+      if (!firstPet) {
+        addChatStatus("Não há animais cadastrados para iniciar a conversa.", true);
+        return false;
+      }
+      window.selectChatPet(firstPet.id, { demo: true });
+    }
+
+    const petId = activeChatPetId;
+    const pet = getPetSafe(petId);
+    const history = ensureChat(petId);
+    history.push({
+      sender: "user",
+      text: message,
+      date: new Date().toISOString(),
+      userEmail: typeof currentEmail === "function" ? currentEmail() : ""
+    });
+    input.value = "";
+    const saved = saveChatSafe();
+    window.renderChatMessages();
+    addChatStatus(saved ? "Mensagem enviada nesta conversa local." : "Mensagem exibida, mas não foi possível salvar no navegador.", !saved);
+
+    if (typeof window.mpAIEnabled === "function" && window.mpAIEnabled() && typeof window.mpAIReply === "function") {
+      const reply = window.mpAIReply(message, pet);
+      const sendReply = () => {
+        ensureChat(petId).push({
+          sender: "assistant",
+          text: reply,
+          date: new Date().toISOString(),
+          isAI: true
+        });
+        saveChatSafe();
+        if (normalizeId(activeChatPetId) === normalizeId(petId)) window.renderChatMessages();
+      };
+      window.setTimeout(sendReply, 450);
+    } else {
+      addChatStatus("Respostas automáticas estão desligadas. Ative a opção IA no topo da conversa.", false);
+    }
+    return false;
+  };
+
+  function installChatBindings() {
+    const form = $("chat-form");
+    const input = $("chat-input-text");
+    if (form && !form.dataset.mpFixed) {
+      form.dataset.mpFixed = "1";
+      form.addEventListener("submit", window.handleSendChatMessage);
+    }
+    if (input && !input.dataset.mpFixed) {
+      input.dataset.mpFixed = "1";
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          window.handleSendChatMessage(e);
+        }
+      });
+    }
+    installChatStartButton();
+    if (typeof window.renderMatchesList === "function") window.renderMatchesList();
+    if (typeof window.mpInstallChatAssistantUI === "function") window.mpInstallChatAssistantUI();
+  }
+
+  function installVisualSystem() {
+    if ($("mp-unified-visual-css")) return;
+    const style = document.createElement("style");
+    style.id = "mp-unified-visual-css";
+    style.textContent = `
+      :root{color-scheme:light;--mp-bg:#f1f5f9;--mp-surface:#ffffff;--mp-soft:#f8fafc;--mp-border:#e2e8f0;--mp-text:#1f2937;--mp-muted:#64748b;--mp-accent:#e11d48}
+      body{background:var(--mp-bg)!important;color:var(--mp-text)!important}
+      #app-container{background:var(--mp-bg)!important}
+      header,.mp-extra-nav,.mp-panel,.mp-v3-card,.mp-v3-stat,#section-feed,#section-matches,#section-ong-dashboard,#section-ong-add-pet,#section-ong-manage-pets{border-color:var(--mp-border)!important}
+      header{background:var(--mp-surface)!important}
+      #section-feed,#section-matches{background:var(--mp-surface)!important}
+      #chat-active-area{background:var(--mp-surface)!important;border-radius:0 0 18px 18px;overflow:hidden}
+      #chat-messages-container{background:#f1f5f9!important;min-height:240px}
+      #chat-form input,#chat-input-text{background:#fff!important;color:#1f2937!important;border:1px solid #cbd5e1!important}
+      #chat-form input::placeholder{color:#64748b!important}
+      .mp-extra-nav{background:#fff!important;border:1px solid var(--mp-border)!important;border-radius:16px!important;box-shadow:0 4px 18px #0f172a0a}
+      .mp-panel,.mp-v3-card,.mp-v3-stat{background:#fff!important;box-shadow:0 4px 18px #0f172a0a!important}
+      .mp-field,input,select,textarea{accent-color:#e11d48}
+      .mp-field:focus,input:focus,select:focus,textarea:focus{outline:2px solid #fecdd3;outline-offset:1px}
+      button{transition:background-color .16s ease,border-color .16s ease,transform .16s ease}
+      button:focus-visible{outline:3px solid #fda4af!important;outline-offset:2px}
+      .mp-chat-composer-hint{font-size:11px;color:#64748b;padding:6px 4px 0}
+      #mp-chat-status{min-height:16px}
+      .mp-theme-toggle{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:12px;border:1px solid #e2e8f0;background:#f8fafc;color:#334155;font-size:12px;font-weight:800}
+      body.mp-dark{background:#0f172a!important;color:#e5e7eb!important;color-scheme:dark}
+      body.mp-dark #app-container{background:#0f172a!important}
+      body.mp-dark header,body.mp-dark .mp-extra-nav,body.mp-dark .mp-panel,body.mp-dark .mp-v3-card,body.mp-dark .mp-v3-stat,
+      body.mp-dark #section-feed,body.mp-dark #section-matches,body.mp-dark #chat-active-area{background:#172033!important;color:#e5e7eb!important;border-color:#334155!important}
+      body.mp-dark #chat-messages-container{background:#0f172a!important}
+      body.mp-dark #chat-form input,body.mp-dark #chat-input-text,body.mp-dark .mp-field,body.mp-dark input,body.mp-dark select,body.mp-dark textarea{background:#1e293b!important;color:#f8fafc!important;border-color:#475569!important}
+      body.mp-dark .mp-extra-nav button,body.mp-dark .mp-btn:not(.mp-btn-primary),body.mp-dark .mp-theme-toggle{background:#1e293b!important;color:#e2e8f0!important;border-color:#475569!important}
+      body.mp-dark .mp-profile-section{background:#1e293b!important;border-color:#334155!important}
+      body.mp-dark .text-gray-900,body.mp-dark .text-gray-800,body.mp-dark .text-gray-700{color:#f1f5f9!important}
+      body.mp-dark .text-gray-600,body.mp-dark .text-gray-500,body.mp-dark .text-gray-400{color:#cbd5e1!important}
+      body.mp-dark .bg-white{background:#172033!important}
+      body.mp-dark .bg-gray-50,body.mp-dark .bg-gray-100{background:#1e293b!important}
+      body.mp-dark .border-gray-100,body.mp-dark .border-gray-200{border-color:#334155!important}
+      body.mp-dark #chat-messages-container .text-gray-500{color:#cbd5e1!important}
+      body.mp-dark #mp-chat-ai-notice{background:#31243b!important;border-color:#59405f!important}
+      body.mp-dark #mp-chat-ai-notice *{color:#f5d0fe!important}
+      @media(max-width:768px){#section-matches{height:calc(100dvh - 150px)!important;min-height:520px}#chat-active-area{min-height:0}#chat-messages-container{min-height:180px}}
+    `;
+    document.head.appendChild(style);
+
+    const header = document.querySelector("#app-container header .max-w-5xl > div");
+    if (header && !$("mp-theme-toggle")) {
+      const button = document.createElement("button");
+      button.id = "mp-theme-toggle";
+      button.type = "button";
+      button.className = "mp-theme-toggle";
+      button.innerHTML = '<i class="fa-solid fa-moon"></i><span>Modo escuro</span>';
+      button.addEventListener("click", () => {
+        document.body.classList.toggle("mp-dark");
+        const dark = document.body.classList.contains("mp-dark");
+        localStorage.setItem("mp_theme_mode", dark ? "dark" : "light");
+        button.innerHTML = dark
+          ? '<i class="fa-solid fa-sun"></i><span>Modo claro</span>'
+          : '<i class="fa-solid fa-moon"></i><span>Modo escuro</span>';
+      });
+      const logoutButton = header.querySelector('button[onclick="logout()"]');
+      if (logoutButton) header.insertBefore(button, logoutButton);
+      else header.appendChild(button);
+    }
+    if (localStorage.getItem("mp_theme_mode") === "dark") {
+      document.body.classList.add("mp-dark");
+      const toggle = $("mp-theme-toggle");
+      if (toggle) toggle.innerHTML = '<i class="fa-solid fa-sun"></i><span>Modo claro</span>';
+    }
+  }
+
+  function bootFixes() {
+    installVisualSystem();
+    installChatBindings();
+    const section = $("section-matches");
+    if (section) section.style.background = "var(--mp-surface)";
+    const input = $("chat-input-text");
+    if (input) {
+      input.placeholder = "Digite sua mensagem e pressione Enter...";
+      input.setAttribute("autocomplete", "off");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", bootFixes);
+  if (document.readyState !== "loading") bootFixes();
+  // Reinstala após a inicialização do app, pois o app pode ser exibido depois do login.
+  const appRoot = $("app-container");
+  if (appRoot) {
+    const observer = new MutationObserver(() => {
+      if (!appRoot.classList.contains("hidden")) bootFixes();
+    });
+    observer.observe(appRoot, { attributes: true, attributeFilter: ["class"] });
+  }
+})();
+</script>
+
+</body>
+</html>
